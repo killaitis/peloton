@@ -1,0 +1,13 @@
+target/
+build/
+out/
+classes/*
+.idea/
+*.iml
+*.ipr
+*.iws
+.bsp
+.vscode
+.metals
+.bloop
+metals.sbt
