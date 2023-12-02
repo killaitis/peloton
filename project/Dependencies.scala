@@ -6,7 +6,7 @@ object Dependencies {
 
   val ScalaTestVersion = "3.2.17"
   val PostgresVersion  = "42.7.0"
-  val LogbackVersion   = "1.4.11"
+  val LogbackVersion   = "1.4.14"
   val Log4CatsVersion  = "2.6.0"
 
   val Http4sVersion                    = "0.23.24"
