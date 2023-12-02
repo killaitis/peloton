@@ -1,10 +1,10 @@
 import Dependencies._
 
-// ThisBuild / organization         := "de.killaitis"
-// ThisBuild / organizationName     := "Andreas Killaitis"
-// ThisBuild / organizationHomepage := Some(url("https://www.github.com/killaitis/peloton"))
+ThisBuild / organization         := "de.killaitis"
+ThisBuild / organizationName     := "Andreas Killaitis"
+ThisBuild / organizationHomepage := Some(url("https://www.github.com/killaitis/peloton"))
 
-ThisBuild / version := "0.1"
+ThisBuild / version := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / scalacOptions := Seq(
@@ -26,10 +26,11 @@ lazy val root = (project in file("."))
   )
 
 lazy val core = (project in file("core"))
-  .disablePlugins(AssemblyPlugin)
   .settings(
     description := "The Peloton core library",
     
+    assembly / assemblyJarName := "peloton-core.jar",
+
     Test / parallelExecution  := false,
     
     libraryDependencies ++= Seq(
