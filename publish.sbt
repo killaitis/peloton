@@ -19,9 +19,6 @@ ThisBuild / organization         := "de.killaitis"
 ThisBuild / organizationName     := "Andreas Killaitis"
 ThisBuild / organizationHomepage := Some(url("https://www.github.com/killaitis"))
 
-publishTo := sonatypePublishToBundle.value
-publishMavenStyle := true
-
 pomIncludeRepository := { _ => false }
 
 sonatypeCredentialHost := "s01.oss.sonatype.org"
