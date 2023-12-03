@@ -7,4 +7,36 @@
 ![Scala](https://img.shields.io/badge/scala-%23DC322F.svg?style=for-the-badge&logo=scala&logoColor=white)
 
 
-# Peloton - an actor library for Cats Effect 
+# Peloton - Actors for Cats Effect 
+
+Peloton aims to be a lightweight actor library for Cats Effect. It provides support for
+- stateful actors: actors that hold and modify a state of a generic type in memory.
+- persistent actors: actors that hold a state of a generic type in memory and can store the state in a durable state store. This state is then restored 
+  automatically after the application restarts.
+
+Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
+
+## Get started
+Add the following dependency to your `build.sbt` file:
+```sbt
+libraryDependencies += "de.killaitis" %% "peloton-core" % PelotonVersion
+```
+
+## Concepts
+TODO
+
+### The Actor System
+
+### Actors and Interaction Patterns
+
+#### The Tell Pattern
+
+#### The Ask Pattern
+
+### Stateful Actors
+
+### Persistent Actors
+
+## Examples
+
+Examples can be found in `core/src/examples`.
