@@ -22,10 +22,7 @@ lazy val root = (project in file("."))
   .settings(
     name                      := "peloton",
     description               := "Actors for Cats Effect",
-
-    publishArtifact           := false,
-    
-    addCommandAlias("playground",   ";core/testOnly **.Playground")
+    publish / skip            := true
   )
 
 lazy val core = (project in file("core"))
@@ -33,11 +30,11 @@ lazy val core = (project in file("core"))
     name                      := "peloton-core",
     description               := "The Peloton core library",
 
-    publishArtifact           := true,
-    publishArtifact in Test   := false,
     publishTo                 := sonatypePublishToBundle.value,
     publishMavenStyle         := true,
-
+    sonatypeCredentialHost    := "s01.oss.sonatype.org",
+    sonatypeRepository        := "https://s01.oss.sonatype.org/service/local",
+    
     Test / parallelExecution  := false,
     
     libraryDependencies ++= Seq(
@@ -77,7 +74,7 @@ lazy val `integration-tests` = (project in file("integration-tests"))
     name                      := "peloton-integration-tests",
     description               := "Peloton integration tests",
     
-    publishArtifact           := false,
+    publish / skip            := true,
 
     Test / parallelExecution  := false,
 
