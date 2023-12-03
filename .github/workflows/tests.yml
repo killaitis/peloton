@@ -23,6 +23,3 @@ jobs:
 
     - name: Run tests
       run: sbt test
-
-    - name: Build artifacts
-      run: sbt assembly

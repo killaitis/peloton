@@ -1,0 +1,33 @@
+name: publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'corretto'
+          java-version: '21'
+          cache:        'sbt'
+
+      - name: Import PGP key
+        env:
+          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+        run: gpg --import <(echo "$PGP_PRIVATE_KEY")
+        
+      - name: Publish
+        env:
+          CI_VERSION: ${{ github.ref }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        run: sbt "; + test; + publishSigned; sonatypeBundleRelease"

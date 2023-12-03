@@ -1,10 +1,11 @@
 import Dependencies._
 
-ThisBuild / organization         := "de.killaitis"
-ThisBuild / organizationName     := "Andreas Killaitis"
-ThisBuild / organizationHomepage := Some(url("https://www.github.com/killaitis/peloton"))
-
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := {
+  val Tag = "refs/tags/(.*)".r
+  sys.env.get("CI_VERSION").collect { case Tag(tag) => tag }
+    .getOrElse("0.0.1-SNAPSHOT")
+}
+ThisBuild / versionScheme := Some("semver-spec")
 
 ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / scalacOptions := Seq(
@@ -18,18 +19,17 @@ ThisBuild / scalacOptions := Seq(
 
 lazy val root = (project in file("."))
   .aggregate(core)
-  .disablePlugins(AssemblyPlugin)
   .settings(
-    description := "An actor library for Cats Effect",
+    name                      := "peloton",
+    description               := "Actors for Cats Effect",
 
     addCommandAlias("playground",   ";core/testOnly **.Playground")
   )
 
 lazy val core = (project in file("core"))
   .settings(
-    description := "The Peloton core library",
-    
-    assembly / assemblyJarName := "peloton-core.jar",
+    name                      := "peloton-core",
+    description               := "The Peloton core library",
 
     Test / parallelExecution  := false,
     
@@ -66,9 +66,9 @@ lazy val core = (project in file("core"))
 
 lazy val `integration-tests` = (project in file("integration-tests"))
   .dependsOn(core)
-  .disablePlugins(AssemblyPlugin)
   .settings(
-    description               := "Integration tests",
+    name                      := "peloton-integration-tests",
+    description               := "Peloton integration tests",
     
     Test / parallelExecution  := false,
 
