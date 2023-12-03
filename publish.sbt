@@ -21,10 +21,10 @@ ThisBuild / organizationHomepage := Some(url("https://www.github.com/killaitis")
 
 pomIncludeRepository := { _ => false }
 
-sonatypeCredentialHost := "s01.oss.sonatype.org"
-sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
+ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
+ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
-credentials ++= (for {
+ThisBuild / credentials ++= (for {
   username <- sys.env.get("SONATYPE_USERNAME")
   password <- sys.env.get("SONATYPE_PASSWORD")
 } yield Credentials(

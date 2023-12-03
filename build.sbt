@@ -32,8 +32,6 @@ lazy val core = (project in file("core"))
 
     publishTo                 := sonatypePublishToBundle.value,
     publishMavenStyle         := true,
-    sonatypeCredentialHost    := "s01.oss.sonatype.org",
-    sonatypeRepository        := "https://s01.oss.sonatype.org/service/local",
     
     Test / parallelExecution  := false,
     
