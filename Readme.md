@@ -46,4 +46,4 @@ TODO
 
 ## Examples
 
-Examples can be found in `core/src/examples`.
+Examples can be found in the `examples` folder.
