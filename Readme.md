@@ -1,33 +1,24 @@
 # Peloton – Actors for Cats Effect 
 
-<style>
-.column {
-  float: left;
-  width: 50%;
-}
-
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-.badges {
-  margin-top: 10px;
-  margin-bottom: 20px;
-}
-</style>
-
-<div class="row">
-<div class="column"><img src="./img/kitten.png" alt="Playful Kitten"/></div>
-<div class="column" align="right">
+<table>
+<tr>
+<td>
+<div><img src="./img/kitten.png" alt="Playful Kitten"/></div>
+</td>
+<td>
+<div>
   <a href="https://typelevel.org/cats/"><img src="https://typelevel.org/cats/img/cats-badge.svg" height="40px" alt="Cats friendly" /></a>
   <a href="https://typelevel.org/cats-effect/"><img src="https://typelevel.org/cats-effect/img/cats-effect-logo.svg" height="40px" alt="Cats Effect" /></a>
   <a href="https://fs2.io/"><img src="https://fs2.io/_media/logo_small.png" height="40px" alt="Functional Streams for Scala" /></a>
 </div>
+<div>
+  <img src="https://img.shields.io/badge/scala-%23DC322F.svg?style=for-the-badge&logo=scala&logoColor=white" />
 </div>
 
-<div class="badges"><img src="https://img.shields.io/badge/scala-%23DC322F.svg?style=for-the-badge&logo=scala&logoColor=white" /></div>
+</td>
+</tr>
+</table>
+
   
 
 Peloton aims to be a lightweight and playful actor library for Cats Effect. It provides support for
