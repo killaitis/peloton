@@ -26,7 +26,7 @@ Peloton actors are designed to work together with your Cats Effect application. 
 ## Get started
 Add the following dependency to your `build.sbt` file:
 ```sbt
-libraryDependencies += "de.killaitis" %% "peloton-core" % "0.0.1"
+libraryDependencies += "de.killaitis" %% "peloton-core" % "0.1.0"
 ```
 
 ## Concepts
