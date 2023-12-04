@@ -33,7 +33,7 @@ import scala.concurrent.duration.Duration
  * 
  * @tparam M The actor's base message type (message handler input)
  */
-abstract class Actor[M]:
+abstract class Actor[-M]:
 
   import Actor.CanAsk
 
