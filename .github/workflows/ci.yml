@@ -1,4 +1,4 @@
-name: Launch ScalaTest
+name: Continuous Integration
 
 on:
   push:
