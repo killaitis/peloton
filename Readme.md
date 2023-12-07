@@ -1,6 +1,6 @@
 # Peloton – Actors for Cats Effect 
 
-[![Continuous Integration](https://github.com/killaitis/peloton/actions/workflows/ci.yml/badge.svg)](https://github.com/killaitis/peloton/actions/workflows/ci.yml) 
+[![Continuous Integration](https://github.com/killaitis/peloton/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/killaitis/peloton/actions/workflows/ci.yml) 
 [![Maven Central](https://img.shields.io/maven-central/v/de.killaitis/peloton-core_3)](https://img.shields.io/maven-central/v/de.killaitis/peloton-core_3) 
 <a href="https://typelevel.org/cats/"><img src="https://typelevel.org/cats/img/cats-badge.svg" height="40px" align="right" alt="Cats friendly" /></a>
 <a href="https://typelevel.org/cats-effect/"><img src="https://typelevel.org/cats-effect/img/cats-effect-logo.svg" height="40px" align="right" alt="Cats Effect" /></a>
