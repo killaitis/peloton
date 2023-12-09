@@ -58,8 +58,8 @@ lazy val core = (project in file("core"))
       "org.http4s" %% "http4s-ember-client"               % Http4sVersion,
       "org.http4s" %% "http4s-circe"                      % Http4sVersion,
 
-      "io.altoo" %% "scala-kryo-serialization" % "1.1.0",
-
+      // Kryo Serialization
+      "io.altoo" %% "scala-kryo-serialization"            % KryoSerializationVersion,
 
       // Config
       "com.github.pureconfig" %% "pureconfig-core"        % PureConfigVersion,
