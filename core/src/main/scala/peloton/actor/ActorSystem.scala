@@ -209,4 +209,10 @@ object ActorSystem:
       _            <- actorSystem.use(f)
     yield ()
 
+  def withActorSystem(config: Config)(f: ActorSystem => IO[?]): IO[Unit] = 
+    for
+      actorSystem  <- ActorSystem(config)
+      _            <- actorSystem.use(f)
+    yield ()
+
 end ActorSystem

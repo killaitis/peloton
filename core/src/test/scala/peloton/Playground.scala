@@ -1,29 +1,59 @@
 package peloton
 
-import peloton.actor.ActorSystem
-// import cats.syntax.all.*
-import cats.effect.IOApp
 import cats.effect.IO
+import cats.effect.IOApp
+
+import peloton.actor.Actor.*
+import peloton.actor.ActorSystem
+
+import java.net.URI
 import scala.concurrent.duration.*
+import peloton.config.Config
+
+object HelloActor:
+
+  sealed trait Message
+
+  object Message:
+    case class Hello(msg: String) extends Message
+    case object HowAreYou extends Message
+
+    final case class HowAreYouResponse(msg: String)
+    given CanAsk[HowAreYou.type, HowAreYouResponse] = canAsk
+
+  def spawn()(using actorSystem: ActorSystem) = 
+    actorSystem.spawn[Unit, Message](
+      name = "HelloActor",
+      initialState = (),
+      initialBehavior = (_, command, context) => command match
+        case Message.Hello(msg) => IO.println(msg) >> IO.pure(context.currentBehavior)
+        case Message.HowAreYou  => context.respond(Message.HowAreYouResponse("I'm fine"))
+    )
+end HelloActor
+
 
 object Playground extends IOApp.Simple:
-
   def run: IO[Unit] = 
-    ActorSystem().use: system => 
-      for
-        _        <- IO.println("Start using ActorSystem")
+    System.setProperty("peloton.http.hostname", "localhost");
+    System.setProperty("peloton.http.port",     "8080");
 
-        actorRef <- system.spawn[Double, String](
-                      name = "actor a",
-                      initialState = 0.0, 
-                      initialBehavior = (s, m, ctx) => m match {
-                        case s => IO.println(s"got msg '$s'") >> IO.pure(ctx.currentBehavior)
-                      }
-                    )
-        ref2     <- system.actorRef[Int]("actor a")
-        _        <- actorRef ! "Foo"
-        // _        <- ref2.traverse_(_ ! "Bar")
-        _        <- IO.println("Sleeping before shutdown ...")
-        _        <- IO.sleep(1.second)
-        _        <- IO.println("End using ActorSystem")
-      yield ()
+    for 
+      config <- Config.default()
+      _      <- ActorSystem.withActorSystem(config) { actorSystem => 
+                  for
+                    _  <- IO.println("Started using ActorSystem")
+                    _  <- HelloActor.spawn()(using actorSystem)
+                    
+                    helloActor <- actorSystem.remoteActorRef[HelloActor.Message](URI("peloton://localhost:8080/HelloActor"))
+                    _          <- helloActor ! HelloActor.Message.Hello("Hello from the Playground!")
+                    hay        <- helloActor ? HelloActor.Message.HowAreYou
+                    _          <- IO.println(s"The Hello actor's state is '$hay'")
+
+                    _  <- IO.println("Waiting before shutdown ...")
+                    _  <- IO.sleep(60.seconds)
+                    _  <- IO.println("Ending using ActorSystem")
+                  yield ()
+                }
+    yield ()
+
+end Playground
