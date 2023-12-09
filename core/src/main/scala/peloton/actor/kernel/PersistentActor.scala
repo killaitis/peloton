@@ -5,7 +5,7 @@ import cats.effect.std.Queue
 import cats.effect.std.Mutex
 import cats.implicits.*
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.FiniteDuration
 
 import peloton.actor.Actor
 import peloton.actor.Actor.*
@@ -153,7 +153,7 @@ private [peloton] object PersistentActor:
                           queueMutex.lock.surround:
                             inbox.offer((message, None))
 
-                        override def ask[M2 <: M, R](message: M2, timeout: Duration)(using Actor.CanAsk[M2, R]) =
+                        override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using Actor.CanAsk[M2, R]) =
                           for
                             deferred         <- Deferred[IO, Either[Throwable, Any]]
                             _                <- queueMutex.lock.surround:

@@ -26,7 +26,7 @@ class StatefulActorSpec
   behavior of "A StatefulActor"
 
   it should "spawn a new actor" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Get() asserting { _ shouldBe GetResponse(words = Nil) }
@@ -35,7 +35,7 @@ class StatefulActorSpec
     }
 
   it should "handle messages sent by the ASK pattern" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Add("Actors") asserting { _ shouldBe AddResponse(wordAdded = "Actors") }
@@ -47,7 +47,7 @@ class StatefulActorSpec
     }
 
   it should "handle messages sent by the TELL pattern" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- CollectorActor.spawn()
         words   = "Actor" :: "tests" :: "are" :: "very" :: "important" :: Nil
@@ -58,7 +58,7 @@ class StatefulActorSpec
     }
 
   it should "be able to cascade ASK messages" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actorC <- CascadingActor.spawn("Actor C", None)
         actorB <- CascadingActor.spawn("Actor B", Some(actorC))
@@ -83,7 +83,7 @@ class StatefulActorSpec
     }
   
   it should "be able to pipe messages from a running fiber to itself" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
@@ -104,7 +104,7 @@ class StatefulActorSpec
     }
 
   it should "be able to cancel the effect fiber" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
@@ -123,7 +123,7 @@ class StatefulActorSpec
     }
 
   it should "be able to handle a failing effect" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         actor  <- EffectActor.spawn(effect = IO.raiseError(RuntimeException()) *> meaningOfLifeEffect)
 

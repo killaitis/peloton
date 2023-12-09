@@ -1,7 +1,7 @@
 package peloton.actor
 
 import cats.effect.*
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.*
 
 /**
  * Actors are the basic building blocks of concurrent computation. In response to a message it receives, 
@@ -70,7 +70,7 @@ abstract class Actor[-M]:
     * @return
     *   An effect that, on evaluation, returns a value of the expected message response type `R`
     */ 
-  def ask[M2 <: M, R](message: M2, timeout: Duration = Duration.Inf)(using CanAsk[M2, R]): IO[R]
+  def ask[M2 <: M, R](message: M2, timeout: FiniteDuration = Actor.DefaultTimeout)(using CanAsk[M2, R]): IO[R]
   
   /**
     * Terminate the actor. 
@@ -116,12 +116,14 @@ abstract class Actor[-M]:
     * @return
     *   An effect that, on evaluation, returns a value of the response type `R`
     */ 
-  inline def ? [M2 <: M, R](message: M2, timeout: Duration = Duration.Inf)(using CanAsk[M2, R]): IO[R] = 
+  inline def ? [M2 <: M, R](message: M2, timeout: FiniteDuration = Actor.DefaultTimeout)(using CanAsk[M2, R]): IO[R] = 
     ask[M2, R](message, timeout)
 
 end Actor
 
 object Actor:
+
+  val DefaultTimeout: FiniteDuration = 1.hour
 
   /**
     * This class is used to establish a connection between a message class and the related response class 

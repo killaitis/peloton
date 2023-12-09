@@ -51,7 +51,15 @@ lazy val core = (project in file("core"))
       // Doobie
       "org.tpolecat" %% "doobie-core"                     % DoobieVersion,
       "org.tpolecat" %% "doobie-hikari"                   % DoobieVersion,
-      "org.http4s"   %% "http4s-dsl"                      % Http4sVersion, // Needed to evict fs2 version provided by doobie
+
+      // Http4s
+      "org.http4s" %% "http4s-dsl"                        % Http4sVersion,
+      "org.http4s" %% "http4s-ember-server"               % Http4sVersion,
+      "org.http4s" %% "http4s-ember-client"               % Http4sVersion,
+      "org.http4s" %% "http4s-circe"                      % Http4sVersion,
+
+      "io.altoo" %% "scala-kryo-serialization" % "1.1.0",
+
 
       // Config
       "com.github.pureconfig" %% "pureconfig-core"        % PureConfigVersion,

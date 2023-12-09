@@ -41,7 +41,7 @@ class DurableStateStoreFactorySpec
 
     
   def load(numActors: Int, numMessages: Int)(using clock: Clock[IO]): IO[Unit] = 
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         _      <- info"### Performing load test with $numActors actors and $numMessages messages per actor"
 

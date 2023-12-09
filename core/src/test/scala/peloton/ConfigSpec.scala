@@ -24,6 +24,7 @@ class ConfigSpec
     config.Config.default().asserting: config =>
       config shouldBe Config(
                         Peloton(
+                          None,
                           Persistence(
                             Postgresql(
                               url             = "jdbc:postgresql://localhost:5432/peloton",
@@ -54,6 +55,7 @@ class ConfigSpec
     config.Config.string(configStr).asserting: config =>
       config shouldBe Config(
                         Peloton(
+                          None,
                           Persistence(
                             Postgresql(
                               url             = "jdbc:postgresql://mydb.com:5432/peloton",
@@ -88,6 +90,7 @@ class ConfigSpec
       config.Config.string(configStr).asserting: config =>
         config shouldBe Config(
                           Peloton(
+                            None, 
                             Persistence(
                               Postgresql(
                                 url             = "jdbc:postgresql://mydb.com:5432/peloton",

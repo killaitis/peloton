@@ -32,7 +32,7 @@ class PersistentActorSpec
   val store = summon[DurableStateStore]
 
   it should "spawn a new actor with default values when the actor has never been started" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         _      <- store.clear()
         actor  <- CountingActor.spawn(persistenceId)
@@ -43,7 +43,7 @@ class PersistentActorSpec
     }
 
   it should "modify its state when receiving messages and write it to the durable state store" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         _      <- store.clear()
 
@@ -72,7 +72,7 @@ class PersistentActorSpec
   it should "re-use its persistent state" in:
     
     // Creates a new actor, increments its counter by a given number and terminates the actor
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       def runActor(numberOfIncrements: Int) = 
         for
           actor  <- CountingActor.spawn(persistenceId)
@@ -104,7 +104,7 @@ class PersistentActorSpec
     }
 
   it should "handle the actor's message stash appropriately" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         _      <- store.clear()
 
@@ -131,7 +131,7 @@ class PersistentActorSpec
     }
 
   it should "handle failed effects in the message handler" in:
-    ActorSystem().use { case given ActorSystem => 
+    ActorSystem.withActorSystem { case given ActorSystem => 
       for
         _      <- store.clear()
         actor  <- CountingActor.spawn(persistenceId)

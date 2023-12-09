@@ -15,12 +15,18 @@ case class Config(
 object Config:
 
   case class Peloton(
+    http: Option[Http],
     persistence: Persistence
-  )
+  ) derives ConfigReader
 
+  case class Http(
+    hostname: String,
+    port: Int
+  ) derives ConfigReader
+  
   case class Persistence(
     store: Store
-  )
+  ) derives ConfigReader
 
   sealed trait Store derives ConfigReader
   case class Postgresql(
