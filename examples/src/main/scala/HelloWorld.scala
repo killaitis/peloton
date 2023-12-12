@@ -30,13 +30,12 @@ object HelloWorld extends IOApp.Simple:
   import HelloActor.Message.given
 
   def run: IO[Unit] = 
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         helloActor <- HelloActor.spawn()
         _          <- helloActor ! HelloActor.Message.Hello("Hello, World!")
         response   <- helloActor ? HelloActor.Message.HowAreYou
         _          <- IO.println(s"The Hello actor says: $response")
       yield ()
-    }
 
 end HelloWorld

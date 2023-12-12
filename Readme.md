@@ -25,7 +25,10 @@ Peloton actors are designed to work together with your Cats Effect application. 
 ## Get started
 Add the following dependency to your `build.sbt` file:
 ```sbt
-libraryDependencies += "de.killaitis" %% "peloton-core" % "0.1.0"
+libraryDependencies ++= Seq(
+  "de.killaitis" %% "peloton-core"                    % PelotonVersion,
+  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion // optional
+)
 ```
 
 Peloton is available for Scala 3. Support for older releases of Scala is currently not planned.

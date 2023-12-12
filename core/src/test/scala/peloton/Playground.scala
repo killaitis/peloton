@@ -1,14 +1,16 @@
 package peloton
 
+import peloton.actor.ActorRef
+import peloton.actor.Actor.*
+import peloton.actor.ActorSystem
+import peloton.config.Config
+
 import cats.effect.IO
 import cats.effect.IOApp
 
-import peloton.actor.Actor.*
-import peloton.actor.ActorSystem
-
 import java.net.URI
 import scala.concurrent.duration.*
-import peloton.config.Config
+
 
 object HelloActor:
 
@@ -39,12 +41,12 @@ object Playground extends IOApp.Simple:
 
     for 
       config <- Config.default()
-      _      <- ActorSystem.withActorSystem(config) { actorSystem => 
+      _      <- ActorSystem.use(config): _ ?=> 
                   for
                     _  <- IO.println("Started using ActorSystem")
-                    _  <- HelloActor.spawn()(using actorSystem)
+                    _  <- HelloActor.spawn()
                     
-                    helloActor <- actorSystem.remoteActorRef[HelloActor.Message](URI("peloton://localhost:8080/HelloActor"))
+                    helloActor <- ActorRef.of[HelloActor.Message](URI("peloton://localhost:8080/HelloActor"))
                     _          <- helloActor ! HelloActor.Message.Hello("Hello from the Playground!")
                     hay        <- helloActor ? HelloActor.Message.HowAreYou
                     _          <- IO.println(s"The Hello actor's state is '$hay'")
@@ -53,7 +55,6 @@ object Playground extends IOApp.Simple:
                     _  <- IO.sleep(60.seconds)
                     _  <- IO.println("Ending using ActorSystem")
                   yield ()
-                }
     yield ()
 
 end Playground

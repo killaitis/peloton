@@ -1,15 +1,5 @@
 package peloton.actor
 
-import cats.effect.*
-import cats.implicits.*
-import cats.effect.std.AtomicCell
-import cats.effect.std.UUIDGen
-import com.comcast.ip4s.*
-
-import scala.concurrent.duration.*
-import java.net.URI
-import scala.reflect.ClassTag
-
 import peloton.actor.Actor.CanAsk
 import peloton.http.ActorSystemServer
 import peloton.actor.kernel.*
@@ -19,6 +9,16 @@ import peloton.persistence.PayloadCodec
 import peloton.persistence.DurableStateStore
 import peloton.config.Config
 import peloton.http.RemoteActorRef
+
+import cats.effect.*
+import cats.implicits.*
+import cats.effect.std.AtomicCell
+import cats.effect.std.UUIDGen
+import com.comcast.ip4s.*
+
+import scala.concurrent.duration.*
+import java.net.URI
+import scala.reflect.ClassTag
 
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
 
@@ -168,13 +168,13 @@ end ActorSystem
 
 object ActorSystem:
 
-  def apply(): IO[Resource[IO, ActorSystem]] = 
+  def make(): IO[Resource[IO, ActorSystem]] = 
     for 
       config       <- Config.default()
-      actorSystem  <- ActorSystem(config)
+      actorSystem  <- ActorSystem.make(config)
     yield actorSystem
 
-  def apply(config: Config): IO[Resource[IO, ActorSystem]] = 
+  def make(config: Config): IO[Resource[IO, ActorSystem]] = 
     for
         httpServerRef    <- Ref[IO].of[Option[FiberIO[Nothing]]](None)
         acquire           = 
@@ -203,16 +203,16 @@ object ActorSystem:
 
     yield Resource.make(acquire)(release)
 
-  def withActorSystem(f: ActorSystem => IO[?]): IO[Unit] = 
+  def use(f: ActorSystem ?=> IO[?]): IO[Unit] = 
     for
-      actorSystem  <- ActorSystem()
-      _            <- actorSystem.use(f)
+      actorSystemRes <- ActorSystem.make()
+      _              <- actorSystemRes.use { case given ActorSystem => f }
     yield ()
 
-  def withActorSystem(config: Config)(f: ActorSystem => IO[?]): IO[Unit] = 
+  def use(config: Config)(f: ActorSystem ?=> IO[?]): IO[Unit] = 
     for
-      actorSystem  <- ActorSystem(config)
-      _            <- actorSystem.use(f)
+      actorSystemRes <- ActorSystem.make(config)
+      _              <- actorSystemRes.use { case given ActorSystem => f }
     yield ()
 
 end ActorSystem

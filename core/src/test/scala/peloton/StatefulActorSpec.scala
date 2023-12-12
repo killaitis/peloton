@@ -10,11 +10,11 @@ import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.*
 
-import peloton.actors.CascadingActor
-import peloton.actors.CascadingActor.*
-import peloton.actors.CollectorActor
-import peloton.actors.CollectorActor.*
-import peloton.actors.EffectActor
+import actors.CascadingActor
+import actors.CascadingActor.*
+import actors.CollectorActor
+import actors.CollectorActor.*
+import actors.EffectActor
 
 import StatefulActorSpec.*
 
@@ -26,16 +26,15 @@ class StatefulActorSpec
   behavior of "A StatefulActor"
 
   it should "spawn a new actor" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Get() asserting { _ shouldBe GetResponse(words = Nil) }
         _      <- actor.terminate
       yield ()
-    }
 
   it should "handle messages sent by the ASK pattern" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Add("Actors") asserting { _ shouldBe AddResponse(wordAdded = "Actors") }
@@ -44,10 +43,9 @@ class StatefulActorSpec
         _      <- actor ? Get()         asserting { _ shouldBe GetResponse(words = "Actors" :: "are" :: "great" :: Nil) }
         _      <- actor.terminate
       yield ()
-    }
 
   it should "handle messages sent by the TELL pattern" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- CollectorActor.spawn()
         words   = "Actor" :: "tests" :: "are" :: "very" :: "important" :: Nil
@@ -55,10 +53,9 @@ class StatefulActorSpec
         _      <- actor ? Get() asserting { _ shouldBe GetResponse(words) }
         _      <- actor.terminate
       yield ()
-    }
 
   it should "be able to cascade ASK messages" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actorC <- CascadingActor.spawn("Actor C", None)
         actorB <- CascadingActor.spawn("Actor B", Some(actorC))
@@ -80,10 +77,9 @@ class StatefulActorSpec
         _      <- actorB.terminate
         _      <- actorC.terminate
       yield ()
-    }
   
   it should "be able to pipe messages from a running fiber to itself" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
@@ -101,10 +97,9 @@ class StatefulActorSpec
 
         _      <- actor.terminate
       yield ()
-    }
 
   it should "be able to cancel the effect fiber" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
@@ -120,10 +115,9 @@ class StatefulActorSpec
 
         _      <- actor.terminate
       yield ()
-    }
 
   it should "be able to handle a failing effect" in:
-    ActorSystem.withActorSystem { case given ActorSystem => 
+    ActorSystem.use: _ ?=> 
       for
         actor  <- EffectActor.spawn(effect = IO.raiseError(RuntimeException()) *> meaningOfLifeEffect)
 
@@ -134,7 +128,6 @@ class StatefulActorSpec
 
         _      <- actor.terminate
       yield ()
-    }
 
 end StatefulActorSpec
 

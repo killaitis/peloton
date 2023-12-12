@@ -28,7 +28,9 @@ class DurableStateStoreFactorySpec
 
   private given SelfAwareStructuredLogger[IO] = Slf4jFactory.create[IO].getLogger
 
-  behavior of "A DurableStateStoreFactory"
+  behavior of "The DurableStateStore factory"
+
+  // TODO: This is currently not a test at all, but a benchmark. Write proper factory tests!
 
   it should "handle parallel load with many messages" in:
     load(numActors = 10, numMessages = 10_000)
@@ -46,8 +48,8 @@ class DurableStateStoreFactorySpec
       
       config <- DurableStateStoreFactorySpec.getConfigForDockerizedPostgres()
 
-      _      <- ActorSystem.withActorSystem(config) { case given ActorSystem => 
-                  DurableStateStoreFactory.withDurableStateStore(config) { case store @ given DurableStateStore =>
+      _      <- ActorSystem.use(config) { _ ?=> 
+                  DurableStateStore.use(config) { store ?=>
                     for
                       _          <- info"Preparing store ..."
                       _          <- store.create()

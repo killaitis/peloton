@@ -1,6 +1,11 @@
 package peloton.persistence
 
-import cats.effect.IO
+import peloton.config.Config
+
+import cats.effect.{IO, Resource}
+
+import scala.util.Try
+
 
 /**
   * The persistence layer typeclass for a given state class `A` that provides methods to store and retrieve
@@ -131,3 +136,24 @@ object DurableStateStore:
     expectedRevision: Long, 
     actualRevision: Long
   ) extends Error
+
+  def create(config: Config): IO[Resource[IO, DurableStateStore]] =
+    for
+      persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
+      driver             <- IO.fromTry(Try {
+                              val classLoader = this.getClass().getClassLoader()
+                              val driverClass = classLoader.loadClass(persistenceConfig.driver)
+                              val ctor        = driverClass.getConstructor()
+                              val driver      = ctor.newInstance().asInstanceOf[Driver]
+                              driver
+                            })
+      store            <- driver.create(persistenceConfig)
+    yield store
+
+  def use(config: Config)(f: DurableStateStore ?=> IO[?]): IO[Unit] = 
+    for
+      store <- create(config)
+      _     <- store.use { case given DurableStateStore => f }
+    yield ()
+
+end DurableStateStore
