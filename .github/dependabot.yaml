@@ -1,10 +1,4 @@
 version: 2
-registries:
-  github-octocat:
-    type: git
-    url: https://github.com
-    username: x-access-token
-    password: ${{secrets.REPO_GITHUB_TOKEN}}
 
 updates:
   - package-ecosystem: "github-actions"
@@ -12,5 +6,5 @@ updates:
     schedule:
       interval: "daily"
     labels:
-      - "twain-ci"
+      - "ci"
       - "dependencies"
