@@ -22,28 +22,16 @@ Peloton aims to be a lightweight and playful actor library for Cats Effect. It p
 
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
-
 ## Get started
 Add the following dependency to your `build.sbt` file:
 ```sbt
 libraryDependencies += "de.killaitis" %% "peloton-core" % "0.1.0"
 ```
 
+Peloton is available for Scala 3. Support for older releases of Scala is currently not planned.
+
 ## Concepts
-TODO
-
-### The Actor System
-
-### Actors and Interaction Patterns
-
-#### The Tell Pattern
-
-#### The Ask Pattern
-
-### Stateful Actors
-
-### Persistent Actors
+The core concepts of Peloton are described [here](./docs/Concepts.md).
 
 ## Examples
-
 Examples can be found in the `examples` folder.
