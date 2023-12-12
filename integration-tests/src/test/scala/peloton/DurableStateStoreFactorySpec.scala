@@ -41,77 +41,75 @@ class DurableStateStoreFactorySpec
 
     
   def load(numActors: Int, numMessages: Int)(using clock: Clock[IO]): IO[Unit] = 
-    ActorSystem.withActorSystem { case given ActorSystem => 
-      for
-        _      <- info"### Performing load test with $numActors actors and $numMessages messages per actor"
+    for
+      _      <- info"### Performing load test with $numActors actors and $numMessages messages per actor"
+      
+      config <- DurableStateStoreFactorySpec.getConfigForDockerizedPostgres()
 
-        config <- DurableStateStoreFactorySpec.getConfigForDockerizedPostgres()
+      _      <- ActorSystem.withActorSystem(config) { case given ActorSystem => 
+                  DurableStateStoreFactory.withDurableStateStore(config) { case store @ given DurableStateStore =>
+                    for
+                      _          <- info"Preparing store ..."
+                      _          <- store.create()
+                      _          <- store.clear()
+                      
+                      // Spawn a bunch of Foo and Bar actors in parallel to stress the system
+                      _          <- info"Spawning actors ..."
+                      fooActors  <- (0 until numActors)
+                                      .parTraverse(i => FooActor.spawn(s"foo-$i", PersistenceId.of(s"foo-$i")))
+                                      .map(_.toVector)
 
-        _      <- persistence.DurableStateStoreFactory.create(config).use:
-                    case store @ given DurableStateStore =>
-                      for
-                        _          <- info"Preparing store ..."
-                        _          <- store.create()
-                        _          <- store.clear()
-                        
-                        // Spawn a bunch of Foo and Bar actors in parallel to stress the system
-                        _          <- info"Spawning actors ..."
-                        fooActors  <- (0 until numActors)
-                                        .parTraverse(i => FooActor.spawn(PersistenceId.of(s"foo-$i")))
-                                        .map(_.toVector)
+                      barActors  <- (0 until numActors)
+                                      .parTraverse(i => BarActor.spawn(s"bar-$i", PersistenceId.of(s"bar-$i")))
+                                      .map(_.toVector)
 
-                        barActors  <- (0 until numActors)
-                                        .parTraverse(i => BarActor.spawn(PersistenceId.of(s"bar-$i")))
-                                        .map(_.toVector)
+                      // Send a bunch of messsages to each actor in parallel 
+                      _          <- info"Sending messages ..."
+                      t1         <- clock.realTimeInstant
+                      _          <- (0 until numActors)
+                                      .parTraverse_ { i =>
+                                        val fooActor = fooActors(i)
+                                        val barActor = barActors(i)
+                                        
+                                        (0 until numMessages)
+                                          .traverse_ { j => 
+                                            for
+                                              _ <- fooActor ! FooActor.Set(x = j, y = 2*j)
+                                              _ <- barActor ! BarActor.Set(s = s"x_$j")
+                                            yield ()
+                                          }
+                                      }
+                      t2         <- clock.realTimeInstant
+                      _          <- info"  => Done! d=${Duration.between(t1, t2)}"
 
-                        // Send a bunch of messsages to each actor in parallel 
-                        _          <- info"Sending messages ..."
-                        t1         <- clock.realTimeInstant
-                        _          <- (0 until numActors)
-                                        .parTraverse_ { i =>
-                                          val fooActor = fooActors(i)
-                                          val barActor = barActors(i)
-                                          
-                                          (0 until numMessages)
-                                            .traverse_ { j => 
-                                              for
-                                                _ <- fooActor ! FooActor.Set(x = j, y = 2*j)
-                                                _ <- barActor ! BarActor.Set(s = s"x_$j")
-                                              yield ()
-                                            }
-                                        }
-                        t2         <- clock.realTimeInstant
-                        _          <- info"  => Done! d=${Duration.between(t1, t2)}"
+                      // Wait for the messages to be processed and check the actor states
+                      _          <- info"Waiting for completion ..."
+                      _          <- warn"${GREEN}*** THIS MIGHT TAKE A COUPLE OF MINUTES TO COMPLETE. PICK A CUP OF TEA AND BE PATIENT! ***${RESET}"
+                      _          <- (0 until numActors)
+                                      .parTraverse_(i => 
+                                        for 
+                                          _  <- fooActors(i) ? FooActor.Get() asserting {
+                                                  _ shouldBe FooActor.GetResponse(x = numMessages - 1, y = 2*(numMessages - 1))
+                                                }
+                                          _  <- barActors(i) ? BarActor.Get() asserting {
+                                                  _ shouldBe BarActor.GetResponse(s = s"x_${numMessages - 1}")
+                                                }
+                                        yield ()
+                                      )
+                      t3         <- clock.realTimeInstant
+                      _          <- info"  => Done! d=${Duration.between(t2, t3)}"
 
-                        // Wait for the messages to be processed and check the actor states
-                        _          <- info"Waiting for completion ..."
-                        _          <- warn"${GREEN}*** THIS MIGHT TAKE A COUPLE OF MINUTES TO COMPLETE. PICK A CUP OF TEA AND BE PATIENT! ***${RESET}"
-                        _          <- (0 until numActors)
-                                        .parTraverse_(i => 
-                                          for 
-                                            _  <- fooActors(i) ? FooActor.Get() asserting {
-                                                    _ shouldBe FooActor.GetResponse(x = numMessages - 1, y = 2*(numMessages - 1))
-                                                  }
-                                            _  <- barActors(i) ? BarActor.Get() asserting {
-                                                    _ shouldBe BarActor.GetResponse(s = s"x_${numMessages - 1}")
-                                                  }
-                                          yield ()
-                                        )
-                        t3         <- clock.realTimeInstant
-                        _          <- info"  => Done! d=${Duration.between(t2, t3)}"
-
-                        // Shut down the actors
-                        _          <- info"Shutting down ..."
-                        _          <- (0 until numActors)
-                                        .parTraverse_(i => 
-                                          fooActors(i).terminate >> 
-                                          barActors(i).terminate
-                                        )
-
-                      yield ()
-
-      yield ()
-    }
+                      // Shut down the actors
+                      _          <- info"Shutting down ..."
+                      _          <- (0 until numActors)
+                                      .parTraverse_(i => 
+                                        fooActors(i).terminate >> 
+                                        barActors(i).terminate
+                                      )
+                    yield ()
+                  }
+                }
+    yield ()
 
 end DurableStateStoreFactorySpec
 
@@ -147,9 +145,8 @@ object DurableStateStoreFactorySpec:
       s"""
         |peloton {
         |  persistence {
-        |    codec = json
-        |    store {
-        |      type              = postgresql
+        |    driver = peloton.persistence.postgresql.Driver
+        |    params {
         |      url               = "$jdbcUrl"
         |      user              = "$dbUsername"
         |      password          = "$dbPassword"

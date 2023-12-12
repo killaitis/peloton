@@ -25,14 +25,7 @@ class ConfigSpec
       config shouldBe Config(
                         Peloton(
                           None,
-                          Persistence(
-                            Postgresql(
-                              url             = "jdbc:postgresql://localhost:5432/peloton",
-                              user            = "peloton",
-                              password        = "peloton",
-                              maximumPoolSize = 10
-                            )
-                          )
+                          None
                         )
                       )
 
@@ -41,8 +34,8 @@ class ConfigSpec
           """
             |peloton {
             |  persistence {
-            |    store {
-            |      type              = postgresql
+            |    driver = peloton.persistence.postgresql.Driver
+            |    params {
             |      url               = "jdbc:postgresql://mydb.com:5432/peloton"
             |      user              = "alvin"
             |      password          = "stardust"
@@ -52,34 +45,58 @@ class ConfigSpec
             |}
           """.stripMargin
           
+/* 
+A Peloton Config should read the config from a given String - 
+
+  Config(Peloton(None, Some(Persistence("peloton.persistence.postgresql.Driver", 
+    Map(
+      "maximum-pool-size" -> "42", 
+      "password" -> "stardust", 
+      "user" -> "alvin", 
+      "url" -> "jdbc:postgresql://mydb.com:5432/peloton"
+    ))))) 
+  
+  was not equal to 
+
+  Config(Peloton(None, Some(Persistence("peloton.persistence.postgresql.Driver", 
+    Map(
+      "url" -> "jdbc:postgresql://mydb.com:5432/peloton", 
+      "user" -> "alvin", 
+      "password" -> "stardust", 
+      "maximumPoolSize" -> "42"
+    )))))          
+
+
+*/
     config.Config.string(configStr).asserting: config =>
       config shouldBe Config(
                         Peloton(
                           None,
-                          Persistence(
-                            Postgresql(
-                              url             = "jdbc:postgresql://mydb.com:5432/peloton",
-                              user            = "alvin",
-                              password        = "stardust",
-                              maximumPoolSize = 42
+                          Some(Persistence(
+                            driver = "peloton.persistence.postgresql.Driver",
+                            params = Map(
+                              "url"               -> "jdbc:postgresql://mydb.com:5432/peloton",
+                              "user"              -> "alvin",
+                              "password"          -> "stardust",
+                              "maximum-pool-size" -> "42"
                             )
-                          )
+                          ))
                         )
                       )
 
   it should "merge Java properties into the config" in:
     val properties = Map(
-      "peloton.persistence.store.url"      -> "jdbc:postgresql://mydb.com:5432/peloton",
-      "peloton.persistence.store.user"     -> "alvin",
-      "peloton.persistence.store.password" -> "stardust"
+      "peloton.persistence.driver"          -> "peloton.persistence.postgresql.Driver",
+      "peloton.persistence.params.url"      -> "jdbc:postgresql://mydb.com:5432/peloton",
+      "peloton.persistence.params.user"     -> "alvin",
+      "peloton.persistence.params.password" -> "stardust"
     )
 
     val configStr = 
           """
             |peloton {
             |  persistence {
-            |    store {
-            |      type              = postgresql
+            |    params {  
             |      maximum-pool-size = 42
             |    }
             |  }
@@ -91,14 +108,15 @@ class ConfigSpec
         config shouldBe Config(
                           Peloton(
                             None, 
-                            Persistence(
-                              Postgresql(
-                                url             = "jdbc:postgresql://mydb.com:5432/peloton",
-                                user            = "alvin",
-                                password        = "stardust",
-                                maximumPoolSize = 42
+                            Some(Persistence(
+                              driver = "peloton.persistence.postgresql.Driver",
+                              params = Map(
+                                "url"               -> "jdbc:postgresql://mydb.com:5432/peloton",
+                                "user"              -> "alvin",
+                                "password"          -> "stardust",
+                                "maximum-pool-size" -> "42"
                               )
-                            )
+                            ))
                           )
                         )
 

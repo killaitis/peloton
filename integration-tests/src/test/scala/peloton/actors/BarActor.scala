@@ -27,9 +27,9 @@ object BarActor:
   given CanAsk[Set, SetResponse] = canAsk
   given CanAsk[Get, GetResponse] = canAsk
 
-  def spawn(persistenceId: PersistenceId)(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Command]] =
+  def spawn(name: String, persistenceId: PersistenceId)(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Command]] =
     actorSystem.spawn(
-      name            = "BarActor",
+      name            = name,
       persistenceId   = persistenceId, 
       initialState    = State(), 
       initialBehavior = 

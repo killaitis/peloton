@@ -18,7 +18,7 @@ ThisBuild / scalacOptions := Seq(
 )
 
 lazy val root = (project in file("."))
-  .aggregate(core)
+  .aggregate(core, postgresql)
   .settings(
     name                      := "peloton",
     description               := "Actors for Cats Effect",
@@ -48,10 +48,6 @@ lazy val core = (project in file("core"))
       "io.circe" %% "circe-core"                          % CirceVersion,
       "io.circe" %% "circe-parser"                        % CirceVersion,
 
-      // Doobie
-      "org.tpolecat" %% "doobie-core"                     % DoobieVersion,
-      "org.tpolecat" %% "doobie-hikari"                   % DoobieVersion,
-
       // Http4s
       "org.http4s" %% "http4s-dsl"                        % Http4sVersion,
       "org.http4s" %% "http4s-ember-server"               % Http4sVersion,
@@ -74,8 +70,23 @@ lazy val core = (project in file("core"))
     )
   )
 
-lazy val `integration-tests` = (project in file("integration-tests"))
+lazy val postgresql = (project in file("persistence/postgresql"))
   .dependsOn(core)
+  .settings(
+    name                      := "peloton-persistence-postgresql",
+    description               := "Peloton persistence PostgreSQL driver",
+    
+    Test / parallelExecution  := false,
+
+    libraryDependencies ++= Seq(
+      // Doobie
+      "org.tpolecat" %% "doobie-core"                     % DoobieVersion,
+      "org.tpolecat" %% "doobie-hikari"                   % DoobieVersion,
+    )
+  )
+
+lazy val `integration-tests` = (project in file("integration-tests"))
+  .dependsOn(core, postgresql)
   .settings(
     name                      := "peloton-integration-tests",
     description               := "Peloton integration tests",
@@ -93,4 +104,15 @@ lazy val `integration-tests` = (project in file("integration-tests"))
       "org.testcontainers" % "testcontainers"             % TestContainersVersion     % Test,
       "org.testcontainers" % "postgresql"                 % TestContainersVersion     % Test
     )
+  )
+
+lazy val examples = (project in file("examples"))
+  .dependsOn(core)
+  .settings(
+    name                      := "peloton-examples",
+    description               := "Peloton examples",
+    
+    publish / skip            := true,
+
+    Test / parallelExecution  := false,
   )

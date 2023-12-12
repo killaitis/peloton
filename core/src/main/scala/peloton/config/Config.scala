@@ -8,15 +8,15 @@ import pureconfig.generic.derivation.default.*
 import Config.* 
 
 case class Config(
-  peloton: Peloton
+  peloton: Peloton = Peloton()
 ) derives ConfigReader
 
 
 object Config:
 
   case class Peloton(
-    http: Option[Http],
-    persistence: Persistence
+    http: Option[Http] = None,
+    persistence: Option[Persistence] = None
   ) derives ConfigReader
 
   case class Http(
@@ -25,16 +25,9 @@ object Config:
   ) derives ConfigReader
   
   case class Persistence(
-    store: Store
+    driver: String,
+    params: Map[String, String]
   ) derives ConfigReader
-
-  sealed trait Store derives ConfigReader
-  case class Postgresql(
-    url: String,
-    user: String,
-    password: String,
-    maximumPoolSize: Int
-  ) extends Store
 
   def default(): IO[Config] =
     IO: 
