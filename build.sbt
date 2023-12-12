@@ -76,6 +76,9 @@ lazy val postgresql = (project in file("persistence/postgresql"))
     name                      := "peloton-persistence-postgresql",
     description               := "Peloton persistence PostgreSQL driver",
     
+    publishTo                 := sonatypePublishToBundle.value,
+    publishMavenStyle         := true,
+    
     Test / parallelExecution  := false,
 
     libraryDependencies ++= Seq(
