@@ -14,7 +14,7 @@ import scala.deriving.Mirror
   * A [[PayloadCodec]] typeclass implementation for type `A` that uses Json encoding/decoding under the hood
   *
   * @param codec 
-  *   A given Circe Json [[Codec]] for type `A`
+  *   A given Circe Json `Codec` for type `A`
   */
 class JsonPayloadCodec[A](using Codec[A]) extends PayloadCodec[A]:
   override def encode(payload: A): IO[Array[Byte]] = IO(payload.asJson.printWith(JsonPayloadCodec.jsonPrinter).getBytes())

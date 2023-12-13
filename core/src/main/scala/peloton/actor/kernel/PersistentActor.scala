@@ -11,6 +11,7 @@ import peloton.actor.Actor
 import peloton.actor.Actor.*
 import peloton.actor.ActorContext
 import peloton.actor.Behavior
+import peloton.persistence.DurableState
 import peloton.persistence.DurableStateStore
 import peloton.persistence.PayloadCodec
 import peloton.persistence.PersistenceId

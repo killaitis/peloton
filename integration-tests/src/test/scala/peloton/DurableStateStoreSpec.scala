@@ -1,7 +1,10 @@
 package peloton
 
+import peloton.persistence.DurableStateStore
 import peloton.persistence.DurableStateStore.*
+import peloton.persistence.DurableState
 import peloton.persistence.PersistenceId
+import peloton.persistence.PayloadCodec
 import peloton.DurableStateStoreSpec.*
 import peloton.DurableStateStoreSpec.given
 
@@ -10,8 +13,6 @@ import io.circe.*
 import io.circe.generic.semiauto.*
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
-import persistence.DurableStateStore
-import persistence.PayloadCodec
 
 
 abstract class DurableStateStoreSpec

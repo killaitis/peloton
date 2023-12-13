@@ -3,7 +3,6 @@ package peloton
 import peloton.actor.ActorSystem
 import peloton.utils.*
 import peloton.persistence.*
-import peloton.persistence.DurableStateStore.DurableState
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -62,7 +61,7 @@ class PersistentActorSpec
                     _ shouldBe CountingActor.GetStateResponse(isOpen = true, counter = incs) 
                     
         _      <- (store.read(persistenceId)).asserting:
-                    case Some(persistence.DurableStateStore.DurableState(CountingActor.State(`incs`), `incs`, _)) => succeed
+                    case Some(persistence.DurableState(CountingActor.State(`incs`), `incs`, _)) => succeed
                     case _ => fail()
 
         _      <- actor.terminate
@@ -95,7 +94,7 @@ class PersistentActorSpec
                     _ shouldBe CountingActor.GetStateResponse(isOpen = false, counter = 12)
 
         _      <- store.read(persistenceId).asserting:
-                    case Some(persistence.DurableStateStore.DurableState(CountingActor.State(12), 12, _)) => succeed
+                    case Some(persistence.DurableState(CountingActor.State(12), 12, _)) => succeed
                     case _ => fail()
 
         _      <- actor.terminate

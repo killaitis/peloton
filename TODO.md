@@ -1,13 +1,10 @@
-# Missing features
-  - setup and shutdown behavior
-  - actor lifetime / automatic termination
+# Planned features
+  - actor setup and shutdown behavior
   - actor hierarchy: concept of child actors
   - event sourcing actors
 
-# Improvements
-  - this reflection thingy in ActorRef
-  - the message handler loop should not be cancellable while processing a message
-  - move code for remote actors to separate module (peloton-remote)
+# Improvements / Refactoring
   
 # Open issues
-  - Remote actors: it works if called correctly, but it is possible to shoot yourself in the foot by asking unsupported messages
+  - Remote actors: it works if called correctly, but it is possible to shoot yourself in the foot by asking unsupported messages. 
+    This is related to the dirty ClassTag thingy in ActorRef

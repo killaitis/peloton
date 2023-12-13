@@ -5,7 +5,7 @@ import peloton.*
 import cats.effect.IO
 import scala.collection.mutable
 import peloton.persistence.DurableStateStore
-import peloton.persistence.DurableStateStore.EncodedState
+import peloton.persistence.EncodedState
 import peloton.persistence.PersistenceId
 
 /**

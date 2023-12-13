@@ -14,14 +14,12 @@ import scala.util.Try
   */
 abstract class DurableStateStore:
 
-  import DurableStateStore.*
-
   /**
     * Create and initialize the internal data structures used by the storage backend if not already created. 
     * 
     * Note: It is guaranteed that this operation will *not* truncate/clear the underlying storage, 
     * but just create it in case it does not already exist. If you need to clear the storage, use 
-    * method [[clear()]] instead.
+    * method [[clear]] instead.
     *
     * @return an `IO[Unit]`
     */
@@ -47,7 +45,7 @@ abstract class DurableStateStore:
     * @param persistenceId 
     *   The [[PersistenceId]] of the encoded state instance to read
     * @return
-    *   [[Some[EncodedState]]] if the entry exists in the storage backend, else [[None]]
+    *   `Some` [[EncodedState]] if the entry exists in the storage backend, else `None`
     */
   def readEncodedState(persistenceId: PersistenceId): IO[Option[EncodedState]]
 
@@ -58,8 +56,8 @@ abstract class DurableStateStore:
     * current encoded state, i.e., `newRevision == currentRevision + 1`. This ensures that there is no collision with 
     * persistence IDs that have accidentally been used multiple times.
     * 
-    * Implementation note: The revision check could have easily been put into the generic [[write()]] method. 
-    * This would have eliminated the need to do the logic in each implementation of [[writeEncodedState()]], 
+    * Implementation note: The revision check could have easily been put into the generic [[write]] method. 
+    * This would have eliminated the need to do the logic in each implementation of [[writeEncodedState]], 
     * but it would also have eliminated the possibility to do the logic more efficient. This is why the decision
     * was made to do it here for each implementation.
     * 
@@ -68,7 +66,7 @@ abstract class DurableStateStore:
     * @param encodedState
     *   The state instance of type [[EncodedState]]
     * @return
-    *   [[IO[Unit]]]
+    *   `IO[Unit]`
     */
   def writeEncodedState(persistenceId: PersistenceId, encodedState: EncodedState): IO[Unit]
 
@@ -80,7 +78,7 @@ abstract class DurableStateStore:
     * @param payloadCodec 
     *   a given [[PayloadCodec]] to convert instances of type `A` to a byte array and vice versa
     * @return
-    *   [[Some[DurableState]]] if the entry exists in the storage backend, else [[None]]
+    *   `Some` [[DurableState]] if the entry exists in the storage backend, else `None`
     */
   def read[A](persistenceId: PersistenceId)(using payloadCodec: PayloadCodec[A]): IO[Option[DurableState[A]]] = 
     for
@@ -127,9 +125,6 @@ abstract class DurableStateStore:
 
 
 object DurableStateStore:
-  final case class DurableState[A](payload: A, revision: Long, timestamp: Long)
-  final case class EncodedState(payload: Array[Byte], revision: Long, timestamp: Long)
-
   sealed trait Error extends Exception
   final case class RevisionMismatchError(
     persistenceId: PersistenceId, 

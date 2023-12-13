@@ -56,8 +56,8 @@ trait ActorContext[S, M](val currentBehavior: Behavior[S, M]):
   /**
     * Replace the current state of the actor with a new state. 
     * 
-    * Under the hood, the current state might be either stored in memory (like in the [[StatefulActor]]) 
-    * or on a persistent storage (like in [[PersistentActor]]).
+    * Under the hood, the current state might be either stored in memory (like in the [[peloton.actor.kernel.StatefulActor]]) 
+    * or on a persistent storage (like in [[peloton.actor.kernel.PersistentActor]]).
     *
     * @param newState 
     *   The new state

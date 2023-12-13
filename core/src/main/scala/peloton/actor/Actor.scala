@@ -28,7 +28,7 @@ import scala.concurrent.duration.*
  * is sent to the actor and the current process (the caller) is suspended until the actor has processed the message 
  * and returned a response.
  * 
- * Interacting with an actor is effectful. This is why all actor functions ([[tell()]], [[ask()]], [[terminate()]]) 
+ * Interacting with an actor is effectful. This is why all actor functions ([[tell]], [[ask]], [[terminate]]) 
  * are wrapped into an effect type.
  * 
  * @tparam M The actor's base message type (message handler input)
@@ -43,7 +43,7 @@ abstract class Actor[-M]:
     * @param message 
     *   A message of the actor's message type `M`
     * @return
-    *   An effect that, on evaluation, returns [[Unit]]
+    *   An effect that, on evaluation, returns `Unit`
     */ 
   def tell(message: M): IO[Unit]
   
@@ -60,7 +60,7 @@ abstract class Actor[-M]:
     *   In the event that the specified time has passed without the actor returning a response, 
     *   a `TimeoutException` is raised.
     * @param CanAsk
-    *   A given instance of [[CanAsk]] for the type parameters `M2` and `R`. The existence of this 
+    *   A given instance of [[Actor.CanAsk]] for the type parameters `M2` and `R`. The existence of this 
     *   instance ensures that the actor supports this ask and, if asked with an instance of type `M2`, 
     *   it will answer with an instance of type `R` and not with some different type `R2` or doesn't answer at all
     *   (like in the TELL pattern). In other words, if an actor provides an instance of `CanAsk[M2, R]`,
@@ -79,26 +79,26 @@ abstract class Actor[-M]:
     * after evaluating the effect.
     *
     * @return 
-    *   an effect that, on evaluation, will terminate the given actor and returns [[Unit]]
+    *   an effect that, on evaluation, will terminate the given actor and returns `Unit`
     */ 
   def terminate: IO[Unit]
 
   /**
     * Send a message to the actor using the TELL pattern.
     * 
-    * An alias for the [[tell()]] function.
+    * An alias for [[tell]].
     * 
     * @param message 
     *   A message of the actor's message type `M`
     * @return
-    *   An effect that, on evaluation, returns [[Unit]]
+    *   An effect that, on evaluation, returns `Unit`
     */ 
   inline def ! (message: M): IO[Unit] = tell(message)
 
   /**
     * Send a message to the actor using the ASK pattern and convert the result to a specific narrower response type.
     * 
-    * An alias for the [[ask()]] function.
+    * An alias for [[ask]].
     * 
     * @tparam M2
     *   A covariant subclass of the actor's message type. 
@@ -109,8 +109,8 @@ abstract class Actor[-M]:
     * @param timeout
     *   In the event that the specified time has passed without the actor returning a response, 
     *   a `TimeoutException` is raised.
-    * @param Ask
-    *   A given instance of [[Ask]] for type parameters `M2` and `R`. This ensures that 
+    * @param CanAsk
+    *   A given instance of [[Actor.CanAsk]] for type parameters `M2` and `R`. This ensures that 
     *   the actor supports the function from `M2` and `R`, i.e., if asked with `M2` it 
     *   will answer with `R` and not with some different `R2`
     * @return
@@ -127,11 +127,13 @@ object Actor:
 
   /**
     * This class is used to establish a connection between a message class and the related response class 
-    * using the ASK pattern. [[ask()]] requires a given instance of [[CanAsk]]. This ensures at COMPILE TIME
-    * that if [[ask()]] is called with a message of `M`, an instance of `R` (or a failed/cancelled `IO`) is 
+    * using the ASK pattern. [[Actor.ask]] requires a given instance of `CanAsk`. This ensures at *COMPILE TIME*
+    * that if [[Actor.ask]] is called with a message of `M`, an instance of `R` (or a failed/cancelled `IO`) is 
     * guaranteed to be returned.
     * 
-    * {{
+    * Example:
+    *
+    * {{{
     * sealed trait Message
     * 
     * case class MyMessage() extends Message
@@ -151,7 +153,7 @@ object Actor:
     *                                             // CanAsk[MyOtherMessage, ?].
     *   _          <- myActor ! MyOtherMessage()  // this will compile, as TELL does not require any givens
     * yield ()
-    * }}
+    * }}}
     */
   final class CanAsk[M, R]
 
@@ -166,7 +168,7 @@ object Actor:
     * @param actor 
     *   The actor to terminate
     * @return 
-    *   an effect that, on evaluation, will terminate the given actor and evaluate to [[Unit]]
+    *   an effect that, on evaluation, will terminate the given actor and evaluate to `Unit`
     */
   inline def terminate(actor: Actor[?]): IO[Unit] = actor.terminate
 
