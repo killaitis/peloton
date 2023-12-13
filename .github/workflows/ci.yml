@@ -23,3 +23,6 @@ jobs:
 
     - name: Run tests
       run: sbt test
+
+    - name: Compile examples
+      run: sbt test
