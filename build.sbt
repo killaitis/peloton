@@ -2,7 +2,8 @@ import Dependencies._
 
 ThisBuild / version := {
   val Tag = "refs/tags/(.*)".r
-  sys.env.get("CI_VERSION").collect { case Tag(tag) => tag }
+  sys.env.get("CI_VERSION")
+    .collect { case Tag(tag) => tag.stripPrefix("v") }
     .getOrElse("0.0.1-SNAPSHOT")
 }
 ThisBuild / versionScheme := Some("semver-spec")
