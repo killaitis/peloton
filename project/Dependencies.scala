@@ -16,6 +16,7 @@ object Dependencies {
   val DoobieVersion                    = "1.0.0-RC5"
   val PureConfigVersion                = "0.17.4"
   val KryoSerializationVersion         = "1.1.0"
+  val QuartzSchedulerVersion           = "2.3.2"
 
   val H2Version                        = "1.4.200" // don't upgrade this version!
 

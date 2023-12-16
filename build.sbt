@@ -19,7 +19,11 @@ ThisBuild / scalacOptions := Seq(
 )
 
 lazy val root = (project in file("."))
-  .aggregate(core, postgresql)
+  .aggregate(
+    core, 
+    postgresql, 
+    cron
+  )
   .settings(
     name                      := "peloton",
     description               := "Actors for Cats Effect",
@@ -86,6 +90,32 @@ lazy val postgresql = (project in file("persistence/postgresql"))
       // Doobie
       "org.tpolecat" %% "doobie-core"                     % DoobieVersion,
       "org.tpolecat" %% "doobie-hikari"                   % DoobieVersion,
+    )
+  )
+
+lazy val cron = (project in file("cron"))
+  .dependsOn(core)
+  .settings(
+    name                      := "peloton-cron",
+    description               := "CRON timer scheduling support for Cats Effect",
+    
+    publishTo                 := sonatypePublishToBundle.value,
+    publishMavenStyle         := true,
+    
+    Test / parallelExecution  := false,
+
+    libraryDependencies ++= Seq(
+      // Quartz Scheduler
+      "org.quartz-scheduler" % "quartz"                   % QuartzSchedulerVersion 
+        exclude (
+          "com.zaxxer", 
+          "HikariCP-java7"
+        ),
+
+      // Testing
+      "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
+      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Runtime,
     )
   )
 
