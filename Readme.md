@@ -29,6 +29,7 @@ Peloton aims to be a lightweight and playful actor library for Cats Effect. It p
   automatically after the application restarts.
 - message stashes: each actor is able to postpone the processing of incoming messages by pushing them to a stash and can pull back the messages from the stash later
 - changing behavior: the actor's message handler, i.e., the current behavior, possibly returns a new behavior - depending on the actor's state and/or the message.
+- scheduling effects: effects can be scheduled using a Quartz-compatible CRON expression and evaluated in the background.
 
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
