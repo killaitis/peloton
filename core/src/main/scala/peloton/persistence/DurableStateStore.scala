@@ -145,10 +145,10 @@ object DurableStateStore:
       store            <- driver.create(persistenceConfig)
     yield store
 
-  def use(config: Config)(f: DurableStateStore ?=> IO[?]): IO[Unit] = 
+  def use[A](config: Config)(f: DurableStateStore ?=> IO[A]): IO[A] = 
     for
-      store <- create(config)
-      _     <- store.use { case given DurableStateStore => f }
-    yield ()
+      store  <- create(config)
+      retval <- store.use { case given DurableStateStore => f }
+    yield retval
 
 end DurableStateStore

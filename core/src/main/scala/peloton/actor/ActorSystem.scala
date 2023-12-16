@@ -203,16 +203,16 @@ object ActorSystem:
 
     yield Resource.make(acquire)(release)
 
-  def use(f: ActorSystem ?=> IO[?]): IO[Unit] = 
+  def use[A](f: ActorSystem ?=> IO[A]): IO[A] = 
     for
       actorSystemRes <- ActorSystem.make()
-      _              <- actorSystemRes.use { case given ActorSystem => f }
-    yield ()
+      retval         <- actorSystemRes.use { case given ActorSystem => f }
+    yield retval
 
-  def use(config: Config)(f: ActorSystem ?=> IO[?]): IO[Unit] = 
+  def use[A](config: Config)(f: ActorSystem ?=> IO[A]): IO[A] = 
     for
       actorSystemRes <- ActorSystem.make(config)
-      _              <- actorSystemRes.use { case given ActorSystem => f }
-    yield ()
+      retval         <- actorSystemRes.use { case given ActorSystem => f }
+    yield retval
 
 end ActorSystem
