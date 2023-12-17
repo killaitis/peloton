@@ -17,17 +17,17 @@ object CascadingActor:
 
   def spawn(name: String, delegate: Option[ActorRef[Message]])(using actorSystem: ActorSystem) = 
     actorSystem.spawn[Unit, Message](
-      name = name,
-      initialState = (),
-      initialBehavior = (_, command, context) => command match
-        case Hello(hello) => 
-          delegate match
-            case Some(delegate) => 
-              for
-                delegateResponse <- delegate ? Hello(hello)
-                _                <- context.respond(HelloResponse(name :: delegateResponse.stack))
-              yield context.currentBehavior
+      name            = name,
+      initialState    = (),
+      initialBehavior = (_, message, context) => message match
+                          case Hello(hello) => 
+                            delegate match
+                              case Some(delegate) => 
+                                for
+                                  delegateResponse <- delegate ? Hello(hello)
+                                  _                <- context.respond(HelloResponse(name :: delegateResponse.stack))
+                                yield context.currentBehavior
 
-            case None => 
-              context.respond(HelloResponse(name :: hello :: Nil))
+                              case None => 
+                                context.respond(HelloResponse(name :: hello :: Nil))
     )

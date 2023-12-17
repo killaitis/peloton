@@ -27,6 +27,7 @@ import peloton.actor.ActorSystem
 import peloton.actor.Actor.CanAsk
 import peloton.actor.Actor.canAsk
 import peloton.http.Codecs.given
+import peloton.actor.ActorRef
 
 object ActorSystemServer:
   object Http:
@@ -43,6 +44,13 @@ object ActorSystemServer:
     // This is veeery ugly, but we have to somehow "convince" the Actor API that the actor supports our generic message
     given CanAsk[Any, Any] = canAsk[Any, Any]
 
+    def checkMessageType[A, M](actorRef: ActorRef[A], message: M): IO[Unit] = 
+      val actorClass    = actorRef.classTag.runtimeClass
+      val messageClass  = message.getClass
+      if actorClass.isAssignableFrom(messageClass) 
+      then IO.unit
+      else IO.raiseError(IllegalArgumentException(s"Invalid message type: expected messages of type ${actorClass.getName}, but received a message of type ${messageClass.getName}"))
+
     val actorRestService: HttpRoutes[IO] =
       HttpRoutes.of[IO]:
         case req @ POST -> Root / "tell" => 
@@ -50,6 +58,7 @@ object ActorSystemServer:
             tellRequest  <- req.as[Http.TellRequest]
             message      <- deserializePayload(tellRequest.payload)
             actorRef     <- actorSystem.actorRef[Any](tellRequest.actorName)
+            _            <- checkMessageType(actorRef, message)
             _            <- actorRef.tell(message)
             httpResponse <- Ok(Http.TellResponse())
           yield httpResponse)
@@ -59,8 +68,8 @@ object ActorSystemServer:
           (for
             askRequest   <- req.as[Http.AskRequest]
             message      <- deserializePayload(askRequest.payload)
-            // ct            = scala.reflect.ClassTag[Any](message.getClass)
             actorRef     <- actorSystem.actorRef[Any](askRequest.actorName) // (using ct)
+            _            <- checkMessageType(actorRef, message)
             response     <- actorRef.ask(message = message, timeout = askRequest.timeout)
             payload      <- serializePayload(response)
             httpResponse <- Ok(Http.AskResponse(payload))

@@ -145,7 +145,7 @@ object Actor:
     * ...
     * 
     * for
-    *   myActor    <- ...                         // spawn an Actor[Command]
+    *   myActor    <- ...                         // spawn an Actor[Message]
     *   myResponse <- myActor ? MyMessage()       // this will compile, as there is a given instance of
     *                                             // CanAsk[MyMessage, MyResponse]. The Compiler will also know 
     *                                             // that myResponse os of type MyResponse, not generic type Response.

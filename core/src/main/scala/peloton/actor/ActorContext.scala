@@ -113,4 +113,6 @@ trait ActorContext[S, M](val currentBehavior: Behavior[S, M]):
         .handleErrorWith(_ => IO.unit)
     ).start
 
+  def currentBehaviorM = IO.pure(currentBehavior)
+
 end ActorContext

@@ -26,8 +26,8 @@ object CollectorActor:
 
   // Solution 1 (preferred): functional
   def handlerFn(words: List[String]): Behavior[State, Message] =
-    (state, command, context) => 
-      command match
+    (state, message, context) => 
+      message match
         case Add(word) => 
           context.respond(AddResponse(word)) >> 
           handlerFn(words :+ word).pure

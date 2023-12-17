@@ -9,7 +9,7 @@ object HelloActor:
   sealed trait Message
 
   object Message:
-    case class Hello(msg: String) extends Message
+    case class Hello(greeting: String) extends Message
     case object HowAreYou extends Message
 
     final case class HowAreYouResponse(msg: String)
@@ -17,11 +17,11 @@ object HelloActor:
 
   def spawn()(using actorSystem: ActorSystem) = 
     actorSystem.spawn[Unit, Message](
-      name = "HelloActor",
-      initialState = (),
-      initialBehavior = (_, command, context) => command match
-        case Message.Hello(msg) => IO.println(msg) >> IO.pure(context.currentBehavior)
-        case Message.HowAreYou  => context.respond(Message.HowAreYouResponse("I'm fine"))
+      name            = "HelloActor",
+      initialState    = (),
+      initialBehavior = (_, message, context) => message match
+        case Message.Hello(greeting) => IO.println(greeting) >> context.currentBehaviorM
+        case Message.HowAreYou       => context.respond(Message.HowAreYouResponse("I'm fine"))
     )
 end HelloActor
 

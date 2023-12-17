@@ -16,17 +16,17 @@ object ToggleActor:
     case ModeA
     case ModeB
 
-  sealed trait Command
+  sealed trait Message
 
-  final case class Toggle() extends Command
+  final case class Toggle() extends Message
   final case class ToggleResponse()
   given CanAsk[Toggle, ToggleResponse] = canAsk
 
-  final case class GetMode() extends Command
+  final case class GetMode() extends Message
   final case class GetModeResponse(mode: Mode)
   given CanAsk[GetMode, GetModeResponse] = canAsk
 
-  val behaviorA: Behavior[Unit, Command] = (_, cmd, context) => cmd match
+  val behaviorA: Behavior[Unit, Message] = (_, message, context) => message match
     case Toggle() => 
       context.respond(ToggleResponse()) >> 
       behaviorB.pure
@@ -34,7 +34,7 @@ object ToggleActor:
     case GetMode() =>
       context.respond(GetModeResponse(Mode.ModeA))
 
-  val behaviorB: Behavior[Unit, Command] = (_, cmd, context) => cmd match
+  val behaviorB: Behavior[Unit, Message] = (_, message, context) => message match
     case Toggle() => 
       context.respond(ToggleResponse()) >> 
       behaviorA.pure
@@ -43,8 +43,8 @@ object ToggleActor:
       context.respond(GetModeResponse(Mode.ModeB))
 
   def spawn(name: String)(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[Unit, Command](
-      name = name,
-      initialState = (),
+    actorSystem.spawn[Unit, Message](
+      name            = name,
+      initialState    = (),
       initialBehavior = behaviorA
     )

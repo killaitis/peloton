@@ -150,7 +150,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
         name     <- maybeName match
                       case Some(name) => IO.pure(name)
                       case None       => UUIDGen.randomString[IO]
-        _        <- IO.assert(!refs.contains(name))(s"An actor with name '$name' already exists!")
+        _        <- IO.assert(!refs.contains(name))(IllegalArgumentException(s"An actor with name '$name' already exists!"))
         actor    <- spawnF
         actorRef  = new ActorRef[M] {
                       override def classTag = ct

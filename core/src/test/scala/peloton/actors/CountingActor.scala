@@ -21,7 +21,7 @@ import peloton.persistence.JsonPayloadCodec
   * - the counter can only be modified if the gate is open. If the gate is closed, Inc messages will be pushed to the actor's message stash
   * - the counter value can be retrieved by sending a Get message
   */
-object  CountingActor:
+object CountingActor:
 
   sealed trait Command
 
@@ -56,9 +56,9 @@ object  CountingActor:
     for
       npStateRef   <- Ref.of[IO, NPState](NPState())
       actor        <- actorSystem.spawn[State, Command](
-                        name = name,
-                        persistenceId = persistenceId, 
-                        initialState = State(), 
+                        name            = name,
+                        persistenceId   = persistenceId, 
+                        initialState    = State(), 
                         initialBehavior = 
                           (state, message, context) => 
                             message match
