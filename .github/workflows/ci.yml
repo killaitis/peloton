@@ -17,9 +17,8 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
-        distribution: 'corretto'
-        java-version: '21'
-        cache:        'sbt'
+        distribution: temurin
+        java-version: 11
 
     - name: Run tests
       run: sbt test
