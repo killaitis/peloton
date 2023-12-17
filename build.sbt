@@ -27,7 +27,9 @@ lazy val root = (project in file("."))
   .settings(
     name                      := "peloton",
     description               := "Actors for Cats Effect",
-    publish / skip            := true
+    publish / skip            := true,
+
+    Test / parallelExecution  := false
   )
 
 lazy val core = (project in file("core"))
