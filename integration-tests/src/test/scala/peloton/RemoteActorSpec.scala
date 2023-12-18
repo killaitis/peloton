@@ -6,7 +6,7 @@ import peloton.config.Config
 import peloton.config.Config.*
 
 import peloton.actors.HelloActor
-import peloton.actors.CountingActor
+import peloton.actors.FooActor
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -51,6 +51,6 @@ class RemoteActorSpec
     ActorSystem.use(config): _ ?=> 
       for
         _      <- HelloActor.spawn("HelloActor")
-        actor  <- ActorRef.of[CountingActor.Command](URI("peloton://localhost:5000/HelloActor")) // <-- invalid type
-        _      <- (actor ! CountingActor.Open).assertThrows[UnexpectedStatus]
+        actor  <- ActorRef.of[FooActor.Message](URI("peloton://localhost:5000/HelloActor")) // <-- invalid type
+        _      <- (actor ! FooActor.Set(3, 2)).assertThrows[UnexpectedStatus]
       yield ()
