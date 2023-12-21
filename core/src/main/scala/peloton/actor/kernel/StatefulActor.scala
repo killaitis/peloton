@@ -15,18 +15,6 @@ import peloton.actor.Behavior
 private [peloton] object StatefulActor:
 
   /**
-    * Type of the elements of the internal message queues. Each element consists of a pair of 
-    * - the incoming raw message sent to the actor of type `M`
-    *  - a 'something' to transport a possible actor response back to the caller. We use 
-    *    a [[Deferred]] here where the consumer (the client) will listen and wait while the 
-    *    producer (the actor) will at some point in time send a response. The response is
-    *    either the actor's response or an error (`Throwable`). The `Deferred` 
-    *    is finally wrapped into an `Option`. This allows it to skip the whole creation of a
-    *    `Deferred` when no response is needed (`tell()`) and only allocate it if needed (`ask()`)
-    */
-  private type ActorMessage[M] = (M, Option[Deferred[IO, Either[Throwable, Any]]])
-
-  /**
     * Spawn a new [[Actor]] with stateful behavior. 
     * 
     * The actor maintains an internal state which is passed to the message handler an can be updated using
@@ -61,10 +49,9 @@ private [peloton] object StatefulActor:
       queueMutex   <- Mutex[IO]
 
       // Create the message processing loop and spawn it in the background (fiber)
-      msgLoopFib   <- (for
-                        state                <- stateRef.get
-                        
+      msgLoopFib   <- (for                        
                         (message, deferred)  <- inbox.take
+                        state                <- stateRef.get
 
                         currentBehavior      <- behaviorRef.get
 

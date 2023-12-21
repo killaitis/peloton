@@ -7,6 +7,7 @@ import peloton.utils.*
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.DurableStateStore
+import peloton.persistence.EventStore
 import peloton.config.Config
 import peloton.http.RemoteActorRef
 
@@ -33,7 +34,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
   def spawn[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
                   name: String
-                 )(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] = 
+                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
     spawn(Some(name), StatefulActor.spawn[S, M](initialState, initialBehavior))
 
   /**
@@ -45,7 +46,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     */
   def spawn[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
-                 )(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] = 
+                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
     spawn(None, StatefulActor.spawn[S, M](initialState, initialBehavior))
 
   /**
@@ -64,9 +65,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                   initialBehavior: Behavior[S, M],
                   name: String
                  )(using 
-                  codec: PayloadCodec[S],
-                  store: DurableStateStore,
-                  ct: reflect.ClassTag[M]
+                  PayloadCodec[S],
+                  DurableStateStore,
+                  reflect.ClassTag[M]
                  ): IO[ActorRef[M]] =
     spawn(Some(name), PersistentActor.spawn[S, M](persistenceId, initialState, initialBehavior))
 
@@ -84,11 +85,57 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                   initialState: S,
                   initialBehavior: Behavior[S, M]
                  )(using 
-                  codec: PayloadCodec[S],
-                  store: DurableStateStore,
-                  ct: reflect.ClassTag[M]
+                  PayloadCodec[S],
+                  DurableStateStore,
+                  reflect.ClassTag[M]
                  ): IO[ActorRef[M]] =
     spawn(None, PersistentActor.spawn[S, M](persistenceId, initialState, initialBehavior))
+
+  /**
+    * Spawns an event sourced actor
+    *
+    * @param persistenceId
+    * @param initialState
+    * @param messageHandler
+    * @param eventHandler
+    * @param codec
+    * @param store
+    * @return
+    */
+  def spawn[S, M, E](persistenceId: PersistenceId,
+                     initialState: S,
+                     messageHandler: MessageHandler[S, M, E],
+                     eventHandler: EventHandler[S, E]
+                    )(using 
+                     PayloadCodec[E],
+                     EventStore,
+                     reflect.ClassTag[M]
+                    ): IO[ActorRef[M]] =
+    spawn(None, EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler))
+
+  /**
+    * Spawns an event sourced actor
+    *
+    * @param persistenceId
+    * @param initialState
+    * @param messageHandler
+    * @param eventHandler
+    * @param codec
+    * @param store
+    * @param name
+    * @return
+    */
+  def spawn[S, M, E](persistenceId: PersistenceId,
+                     initialState: S,
+                     messageHandler: MessageHandler[S, M, E],
+                     eventHandler: EventHandler[S, E],
+                     name: String
+                    )(using 
+                     PayloadCodec[E],
+                     EventStore,
+                     reflect.ClassTag[M]
+                    ): IO[ActorRef[M]] =
+    spawn(Some(name), EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler))
 
   /**
     * Obtains the ActorRef for a given actor name

@@ -98,7 +98,7 @@ abstract class DurableStateStore:
     yield maybeDecodedState
     
   /**
-    * Writes a new revision of the [[DurableState]] for type `A` from storage backend.
+    * Writes a new revision of the [[DurableState]] for type `A` into the storage backend.
     *
     * The method will fail if the revision of new encoded state is not exactly the successor of the revision of the 
     * current encoded state, i.e., `newRevision == currentRevision + 1`. This ensures that there is no collision with 
@@ -123,6 +123,8 @@ abstract class DurableStateStore:
       _                <- writeEncodedState(persistenceId, encodedState)
     yield ()
 
+end DurableStateStore
+
 
 object DurableStateStore:
   sealed trait Error extends Exception
@@ -142,7 +144,7 @@ object DurableStateStore:
                               val driver      = ctor.newInstance().asInstanceOf[Driver]
                               driver
                             })
-      store            <- driver.create(persistenceConfig)
+      store            <- driver.createDurableStateStore(persistenceConfig)
     yield store
 
   def use[A](config: Config)(f: DurableStateStore ?=> IO[A]): IO[A] = 

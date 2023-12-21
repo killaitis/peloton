@@ -1,12 +1,12 @@
 package peloton.utils
 
 import peloton.*
-
-import cats.effect.IO
-import scala.collection.mutable
 import peloton.persistence.DurableStateStore
 import peloton.persistence.EncodedState
 import peloton.persistence.PersistenceId
+
+import cats.effect.IO
+import scala.collection.mutable
 
 /**
   * A simple in-memory implemention of the [[DurableStateStore]] that provides additional
