@@ -14,7 +14,7 @@ class DurableStateStorePostgreSQL(using xa: Transactor[IO])
     (
       for 
         _  <- sql"""
-                create table if not exists durable_state_io (
+                create table if not exists durable_state (
                   persistence_id  varchar(255)  not null,
                   revision        bigint        not null,
                   payload         bytea         not null,
@@ -26,21 +26,21 @@ class DurableStateStorePostgreSQL(using xa: Transactor[IO])
 
               // for readRevision()
         _  <- sql"""
-                create unique index if not exists idx_durable_state_io_revision on durable_state_io (persistence_id, revision)
+                create unique index if not exists idx_durable_state_revision on durable_state (persistence_id, revision)
               """.update.run
       yield ()
     ).transact(xa)
 
   override def drop(): IO[Unit] = 
-    sql"drop table if exists durable_state_io"
+    sql"drop table if exists durable_state"
       .update.run.transact(xa).void
 
   override def clear(): IO[Unit] = 
-    sql"truncate table durable_state_io"
+    sql"truncate table durable_state"
       .update.run.transact(xa).void
 
   override def readEncodedState(persistenceId: PersistenceId): IO[Option[EncodedState]] = 
-    sql"select payload, revision, timestamp from durable_state_io where persistence_id = ${persistenceId.toString()}"
+    sql"select payload, revision, timestamp from durable_state where persistence_id = ${persistenceId.toString()}"
       .query[EncodedState].option.transact(xa)
 
   override def writeEncodedState(persistenceId: PersistenceId, state: EncodedState): IO[Unit] = 
@@ -63,12 +63,12 @@ class DurableStateStorePostgreSQL(using xa: Transactor[IO])
     .transact(xa)
 
   private def readRevision(persistenceId: PersistenceId): ConnectionIO[Option[Long]] = 
-    sql"select revision from durable_state_io where persistence_id = ${persistenceId.toString()}"
+    sql"select revision from durable_state where persistence_id = ${persistenceId.toString()}"
       .query[Long].option
 
   private def insertEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
     sql"""
-      insert into durable_state_io (
+      insert into durable_state (
         persistence_id,
         payload,
         revision,
@@ -84,7 +84,7 @@ class DurableStateStorePostgreSQL(using xa: Transactor[IO])
   private def updateEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
     sql"""
       update 
-        durable_state_io 
+        durable_state 
       set 
         revision=${state.revision}, 
         timestamp=${state.timestamp},

@@ -5,6 +5,7 @@ import peloton.persistence.DurableStateStore.*
 import peloton.persistence.DurableState
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
+
 import peloton.DurableStateStoreSpec.*
 import peloton.DurableStateStoreSpec.given
 
@@ -124,7 +125,9 @@ abstract class DurableStateStoreSpec
       _        <- store.write(persistenceId, oldState)
       _        <- store.write(persistenceId, newState).assertThrows[RevisionMismatchError]
     yield ()
-      
+
+end DurableStateStoreSpec
+
 
 object DurableStateStoreSpec:
   final case class MyData(i: Int, s: String)

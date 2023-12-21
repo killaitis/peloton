@@ -7,18 +7,37 @@ import peloton.persistence.DurableStateStore
 import doobie.util.transactor.Transactor
 import doobie.hikari.HikariTransactor
 import com.zaxxer.hikari.HikariConfig
+import peloton.persistence.EventStore
+import peloton.config.Config.Persistence
 
 
 class Driver extends peloton.persistence.Driver:
 
-  case class PostgresqlConfig(
-    url: String,
-    user: String,
-    password: String,
-    maximumPoolSize: Int
-  )
+  override def createDurableStateStore(persistenceConfig: Config.Persistence): IO[Resource[IO, DurableStateStore]] =
+    for
+      hikariConfig       <- getHikariConfig(persistenceConfig)
+      durableStateStore   = createPostgreSQLDurableStateStore(hikariConfig)
+    yield durableStateStore
 
-  override def create(persistenceConfig: Config.Persistence): IO[Resource[IO, DurableStateStore]] =
+  override def createEventStore(persistenceConfig: Persistence): IO[Resource[IO, EventStore]] = 
+    for
+      hikariConfig <- getHikariConfig(persistenceConfig)
+      eventStore    = createPostgreSQLEventStore(hikariConfig)
+    yield eventStore
+
+  private def createPostgreSQLDurableStateStore(hikariConfig: HikariConfig): Resource[IO, DurableStateStore] =
+    for
+      given Transactor[IO] <- HikariTransactor.fromHikariConfig[IO](hikariConfig)
+      durableStateStore     = new DurableStateStorePostgreSQL
+    yield durableStateStore
+
+  private def createPostgreSQLEventStore(hikariConfig: HikariConfig): Resource[IO, EventStore] =
+    for
+      given Transactor[IO] <- HikariTransactor.fromHikariConfig[IO](hikariConfig)
+      eventStore            = new EventStorePostgreSQL
+    yield eventStore
+
+  private def getHikariConfig(persistenceConfig: Config.Persistence): IO[HikariConfig] =
 
     def getParameter(key: String): IO[String] = 
       IO.fromOption(persistenceConfig.params.get(key))(new java.lang.IllegalArgumentException(s"Invalid persistence config: key '$key' is missing"))
@@ -30,29 +49,18 @@ class Driver extends peloton.persistence.Driver:
       user             <- getParameter("user")
       password         <- getParameter("password")
       maximumPoolSize   = getOptionalParameter("maximum-pool-size", "10")
-      config            = PostgresqlConfig(
-                            url             = jdbcUrl,
-                            user            = user,
-                            password        = password,
-                            maximumPoolSize = maximumPoolSize.toInt
-                          )
-      store = createPostgreSQLStore(config)
-    yield store
-  end create
+      hikariConfig      = {
+                            val hikariConfig = new HikariConfig()
+                            hikariConfig.setDriverClassName("org.postgresql.Driver")
+                            hikariConfig.setJdbcUrl(jdbcUrl)
+                            hikariConfig.setUsername(user)
+                            hikariConfig.setPassword(password)
+                            hikariConfig.setMaximumPoolSize(maximumPoolSize.toInt)
+                            hikariConfig.setAutoCommit(false)
+                            hikariConfig
+                          }
 
-  private def createPostgreSQLStore(config: PostgresqlConfig): Resource[IO, DurableStateStore] =
-    for
-      hikariConfig       <- Resource.pure:
-                              // For the full list of Hikari configuration options see https://github.com/brettwooldridge/HikariCP#gear-configuration-knobs-baby
-                              val hikariConfig = new HikariConfig()
-                              hikariConfig.setDriverClassName("org.postgresql.Driver")
-                              hikariConfig.setJdbcUrl(config.url)
-                              hikariConfig.setUsername(config.user)
-                              hikariConfig.setPassword(config.password)
-                              hikariConfig.setMaximumPoolSize(config.maximumPoolSize)
-                              hikariConfig.setAutoCommit(false)
-                              hikariConfig
+    yield hikariConfig
+  end getHikariConfig
 
-      given Transactor[IO] <- HikariTransactor.fromHikariConfig[IO](hikariConfig)
-      store                 = new DurableStateStorePostgreSQL
-    yield store
+end Driver
