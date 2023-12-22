@@ -121,8 +121,11 @@ lazy val cron = (project in file("cron"))
     )
   )
 
+lazy val Benchmark = config("benchmark") extend Test
+
 lazy val `integration-tests` = (project in file("integration-tests"))
   .dependsOn(core, postgresql)
+  .configs(Benchmark)
   .settings(
     name                      := "peloton-integration-tests",
     description               := "Peloton integration tests",
@@ -130,6 +133,12 @@ lazy val `integration-tests` = (project in file("integration-tests"))
     publish / skip            := true,
 
     Test / parallelExecution  := false,
+    Test / testOptions        := Seq(Tests.Argument("-l", "Benchmark")),
+
+    inConfig(Benchmark)(Defaults.testTasks),
+    Benchmark / parallelExecution := false,
+    Benchmark / testOptions       := Seq(Tests.Argument("-n", "Benchmark")),
+
 
     libraryDependencies ++= Seq(
       // Testing

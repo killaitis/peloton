@@ -11,7 +11,7 @@ import doobie.util.transactor.Transactor
 import doobie.*
 import doobie.implicits.*
 
-class EventStorePostgreSQL(using xa: Transactor[IO]) extends EventStore:
+private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extends EventStore:
 
   def create(): IO[Unit] = 
     (

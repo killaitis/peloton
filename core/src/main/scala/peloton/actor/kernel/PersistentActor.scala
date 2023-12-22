@@ -1,12 +1,5 @@
 package peloton.actor.kernel
 
-import cats.effect.*
-import cats.effect.std.Queue
-import cats.effect.std.Mutex
-import cats.implicits.*
-
-import scala.concurrent.duration.FiniteDuration
-
 import peloton.actor.Actor
 import peloton.actor.Actor.*
 import peloton.actor.ActorContext
@@ -15,6 +8,13 @@ import peloton.persistence.DurableState
 import peloton.persistence.DurableStateStore
 import peloton.persistence.PayloadCodec
 import peloton.persistence.PersistenceId
+
+import cats.effect.*
+import cats.effect.std.Queue
+import cats.effect.std.Mutex
+import cats.implicits.*
+
+import scala.concurrent.duration.FiniteDuration
 
 
 private [peloton] object PersistentActor:
@@ -81,7 +81,8 @@ private [peloton] object PersistentActor:
       
       // Create the message processing loop and spawn it in the background (fiber)
       msgLoopFib   <- (for
-                        (message, deferred)  <- inbox.take
+                        (message, responseChannel)    
+                                             <- inbox.take
                         state                <- stateRef.get
 
                         currentBehavior      <- behaviorRef.get
@@ -90,11 +91,11 @@ private [peloton] object PersistentActor:
                                                   override def tellSelf(message: M) =
                                                     queueMutex.lock.surround:
                                                       inbox.offer((message, None)) >> 
-                                                      this.currentBehavior.pure
+                                                      currentBehaviorM
 
                                                   override def respond[R](response: R) =
-                                                    deferred.traverse_(_.complete(Right(response)).void) >>
-                                                    this.currentBehavior.pure
+                                                    responseChannel.traverse_(_.complete(Right(response)).void) >>
+                                                    currentBehaviorM
 
                                                   override def setState(newState: S) = 
                                                     for
@@ -109,8 +110,8 @@ private [peloton] object PersistentActor:
 
                                                   override def stash() =
                                                     queueMutex.lock.surround:
-                                                      stashed.offer((message, deferred)) >>
-                                                      this.currentBehavior.pure
+                                                      stashed.offer((message, responseChannel)) >>
+                                                      currentBehaviorM
 
                                                   override def unstashAll() =
                                                     queueMutex.lock.surround:
@@ -128,7 +129,7 @@ private [peloton] object PersistentActor:
                         newBehavior          <- currentBehavior
                                                   .receive(state.payload, message, context)
                                                   .recoverWith: error => 
-                                                    deferred.traverse_(_.complete(Left(error)).void) >>
+                                                    responseChannel.traverse_(_.complete(Left(error)).void) >>
                                                     IO.pure(currentBehavior)
                                                   
                         _                    <- behaviorRef.set(newBehavior)                    
@@ -142,10 +143,10 @@ private [peloton] object PersistentActor:
 
                         override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using Actor.CanAsk[M2, R]) =
                           for
-                            deferred         <- Deferred[IO, Either[Throwable, Any]]
+                            responseChannel  <- Deferred[IO, Either[Throwable, Any]]
                             _                <- queueMutex.lock.surround:
-                                                  inbox.offer((message, Some(deferred)))
-                            output           <- deferred.get.timeout(timeout)
+                                                  inbox.offer((message, Some(responseChannel)))
+                            output           <- responseChannel.get.timeout(timeout)
                             response         <- IO.fromEither(output)
                             narrowedResponse <- IO(response.asInstanceOf[R])
                           yield narrowedResponse

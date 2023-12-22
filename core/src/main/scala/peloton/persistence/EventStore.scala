@@ -1,7 +1,11 @@
 package peloton.persistence
 
+import peloton.config.Config
+
 import cats.effect.IO
+import cats.effect.Resource
 import fs2.Stream
+import scala.util.Try
 
 trait EventStore:
 
@@ -90,5 +94,28 @@ trait EventStore:
                                       )
       _                <- writeEncodedEvent(persistenceId, encodedEvent)
     yield ()
+
+end EventStore
+
+object EventStore:
+
+  def create(config: Config): IO[Resource[IO, EventStore]] =
+    for
+      persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
+      driver             <- IO.fromTry(Try {
+                              val classLoader = this.getClass().getClassLoader()
+                              val driverClass = classLoader.loadClass(persistenceConfig.driver)
+                              val ctor        = driverClass.getConstructor()
+                              val driver      = ctor.newInstance().asInstanceOf[Driver]
+                              driver
+                            })
+      eventSore            <- driver.createEventStore(persistenceConfig)
+    yield eventSore
+
+  def use[A](config: Config)(f: EventStore ?=> IO[A]): IO[A] = 
+    for
+      store  <- create(config)
+      retval <- store.use { case given EventStore => f }
+    yield retval
 
 end EventStore

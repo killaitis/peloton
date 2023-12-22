@@ -1,8 +1,12 @@
-package peloton
+package peloton.benchmarks
 
 import peloton.actor.ActorSystem
 import peloton.persistence.*
 import peloton.utils.*
+
+import peloton.actors.FooActor
+import peloton.actors.BarActor
+import peloton.PostgreSQLSpec
 
 import cats.effect.*
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -11,43 +15,38 @@ import org.scalatest.matchers.should.Matchers
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jFactory
 import org.typelevel.log4cats.syntax.*
-import org.testcontainers.containers.PostgreSQLContainer
-import org.testcontainers.utility.DockerImageName
 import scala.io.AnsiColor.*
 import java.time.Duration
+import org.scalatest.Tag
 
-import actors.FooActor
-import actors.BarActor
 
-import DurableStateStoreFactorySpec.*
+object Benchmark extends Tag("Benchmark")
 
-class DurableStateStoreFactorySpec
+class PersistentActorBenchmark
   extends AsyncFlatSpec 
     with AsyncIOSpec 
     with Matchers:
 
   private given SelfAwareStructuredLogger[IO] = Slf4jFactory.create[IO].getLogger
 
+  val config = PostgreSQLSpec.testContainerConfig
+
   behavior of "The DurableStateStore factory"
 
-  // TODO: This is currently not a test at all, but a benchmark. Write proper factory tests!
-
-  it should "handle parallel load with many messages" in:
+  it should "handle parallel load with many messages" taggedAs(Benchmark) in:
     load(numActors = 10, numMessages = 10_000)
 
-  it should "handle parallel load with many actors and messages" in:
+  it should "handle parallel load with many actors and messages" taggedAs(Benchmark) in:
     load(numActors = 1_000, numMessages = 100)
 
-  it should "handle parallel load with many actors" in:
+  it should "handle parallel load with many actors" taggedAs(Benchmark) in:
     load(numActors = 10_000, numMessages = 10)
 
     
-  def load(numActors: Int, numMessages: Int)(using clock: Clock[IO]): IO[Unit] = 
+  private def load(numActors: Int, numMessages: Int)(using clock: Clock[IO]): IO[Unit] = 
     for
       _      <- info"### Performing load test with $numActors actors and $numMessages messages per actor"
       
-      config <- DurableStateStoreFactorySpec.getConfigForDockerizedPostgres()
-
       _      <- ActorSystem.use(config) { _ ?=> 
                   DurableStateStore.use(config) { store ?=>
                     for
@@ -113,10 +112,10 @@ class DurableStateStoreFactorySpec
                 }
     yield ()
 
-end DurableStateStoreFactorySpec
+end PersistentActorBenchmark
 
-
-object DurableStateStoreFactorySpec:
+/*
+object PersistentActorBenchmark:
 
   private lazy val postgresContainer: PostgreSQLContainer[Nothing] =
     val imageName = DockerImageName.parse("postgres").withTag("14.5")
@@ -124,15 +123,6 @@ object DurableStateStoreFactorySpec:
     container.start()
     container
     
-  def getConfigForLocalPostgres() = 
-    val dbHost = "localhost"
-    val dbPort = 5432
-    val dbName = "peloton"
-    val dbUsername = "peloton"
-    val dbPassword = "peloton"
-    val jdbcUrl = s"jdbc:postgresql://$dbHost:$dbPort/$dbName"
-    getConfig(jdbcUrl = jdbcUrl, dbUsername = dbUsername, dbPassword = dbPassword)
-
   def getConfigForDockerizedPostgres() =
     val dbHost = postgresContainer.getHost()
     val dbPort = postgresContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)
@@ -161,3 +151,4 @@ object DurableStateStoreFactorySpec:
   end getConfig
 
 end DurableStateStoreFactorySpec
+*/

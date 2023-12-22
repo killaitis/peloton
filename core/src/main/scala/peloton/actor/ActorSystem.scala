@@ -18,8 +18,8 @@ import cats.effect.std.UUIDGen
 import com.comcast.ip4s.*
 
 import scala.concurrent.duration.*
-import java.net.URI
 import scala.reflect.ClassTag
+import java.net.URI
 
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
 

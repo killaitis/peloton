@@ -87,26 +87,27 @@ private [peloton] object EventSourcedActor:
 
       // Create the message processing loop and spawn it in the background (fiber)
       msgLoopFib   <- (for
-                        (message, deferred)  <- inbox.take
+                        (message, responseChannel)    
+                                             <- inbox.take
                         state                <- stateRef.get
                         
                         context               = new ActorContext[S, M](currentBehavior = behavior):
                                                   override def tellSelf(message: M) =
                                                     queueMutex.lock.surround:
                                                       inbox.offer((message, None)) >>
-                                                      this.currentBehavior.pure
+                                                      currentBehaviorM
 
                                                   override def respond[R](response: R) =
-                                                    deferred.traverse_(_.complete(Right(response)).void) >>
-                                                    this.currentBehavior.pure
+                                                    responseChannel.traverse_(_.complete(Right(response)).void) >>
+                                                    currentBehaviorM
 
                                                   override def setState(newState: S) =
                                                     stateRef.update(_ => newState) >> 
-                                                    this.currentBehavior.pure
+                                                    currentBehaviorM
 
                                                   override def stash() =
                                                     queueMutex.lock.surround:
-                                                      stashed.offer((message, deferred)) >>
+                                                      stashed.offer((message, responseChannel)) >>
                                                       this.currentBehavior.pure
 
                                                   override def unstashAll() =
@@ -125,7 +126,7 @@ private [peloton] object EventSourcedActor:
                         _                    <- behavior
                                                   .receive(state, message, context)
                                                   .recoverWith: error => 
-                                                    deferred.traverse_(_.complete(Left(error)).void)
+                                                    responseChannel.traverse_(_.complete(Left(error)).void)
                       yield ()).foreverM.void.start
 
       // Compose the actor
@@ -136,10 +137,10 @@ private [peloton] object EventSourcedActor:
 
                         override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using Actor.CanAsk[M2, R]) =
                           for
-                            deferred         <- Deferred[IO, Either[Throwable, Any]]
+                            responseChannel  <- Deferred[IO, Either[Throwable, Any]]
                             _                <- queueMutex.lock.surround:
-                                                  inbox.offer((message, Some(deferred)))
-                            output           <- deferred.get.timeout(timeout)
+                                                  inbox.offer((message, Some(responseChannel)))
+                            output           <- responseChannel.get.timeout(timeout)
                             response         <- IO.fromEither(output)
                             narrowedResponse <- IO(response.asInstanceOf[R])
                           yield narrowedResponse

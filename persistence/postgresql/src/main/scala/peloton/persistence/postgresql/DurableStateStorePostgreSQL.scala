@@ -7,8 +7,7 @@ import cats.effect.IO
 import doobie.*
 import doobie.implicits.*
 
-class DurableStateStorePostgreSQL(using xa: Transactor[IO])
-  extends DurableStateStore:
+private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO]) extends DurableStateStore:
 
   override def create(): IO[Unit] = 
     (

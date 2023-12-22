@@ -1,5 +1,11 @@
 package peloton.http
 
+import peloton.actor.ActorSystem
+import peloton.actor.Actor.CanAsk
+import peloton.actor.Actor.canAsk
+import peloton.http.Codecs.given
+import peloton.actor.ActorRef
+
 import cats.effect.IO
 import cats.effect.Resource
 
@@ -22,12 +28,6 @@ import com.comcast.ip4s.{Hostname, Port}
 import scala.concurrent.duration.*
 import scala.util.Try
 import java.util.Base64
-
-import peloton.actor.ActorSystem
-import peloton.actor.Actor.CanAsk
-import peloton.actor.Actor.canAsk
-import peloton.http.Codecs.given
-import peloton.actor.ActorRef
 
 object ActorSystemServer:
   object Http:
