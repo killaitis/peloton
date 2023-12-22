@@ -14,7 +14,7 @@ import peloton.persistence.JsonPayloadCodec
 import peloton.actor.ActorContext
 
 /**
-  * A event-sourced actor
+  * A event sourced actor with simple calculation operations 
   */
 object CalculatorActor:
 
@@ -38,10 +38,10 @@ object CalculatorActor:
   private def messageHandler(state: State, message: Message, context: ActorContext[State, Message]): IO[EventAction[Event]] = 
     message match
       case Add(value) =>
-        IO.pure(EventAction.Store(AddEvent(value)))
+        IO.pure(EventAction.Persist(AddEvent(value)))
 
       case Sub(value) =>
-        IO.pure(EventAction.Store(SubEvent(value)))
+        IO.pure(EventAction.Persist(SubEvent(value)))
 
       case GetState =>
         context.respond(GetStateResponse(state.value)) >> 

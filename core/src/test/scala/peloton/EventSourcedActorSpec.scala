@@ -27,7 +27,7 @@ class EventSourcedActorSpec
 
   val eventStore = summon[EventStore]
 
-  it should "spawn a new event-sourced actor and store its events" in:
+  it should "spawn a new event sourced actor and store its events" in:
     ActorSystem.use: _ ?=> 
       for
         _      <- eventStore.clear()
@@ -48,7 +48,7 @@ class EventSourcedActorSpec
         _      <- actor.terminate
       yield ()
 
-  it should "spawn a new event-sourced actor and read all previous events from the event store" in:
+  it should "spawn a new event sourced actor and read all previous events from the event store" in:
     ActorSystem.use: _ ?=> 
       for
         _      <- eventStore.clear()
@@ -75,4 +75,4 @@ end EventSourcedActorSpec
 object EventSourcedActorSpec:
   private given EventStore = new EventStoreMock
   
-  private val persistenceId = PersistenceId.of("myactor")
+  private val persistenceId = PersistenceId.of("my-event-sourced-actor")

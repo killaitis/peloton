@@ -144,6 +144,6 @@ object PersistentActorSpec:
   private given PayloadCodec[CountingActor.State] = persistence.JsonPayloadCodec.create
   private given DurableStateStore = new DurableStateStoreMock
   
-  private val persistenceId = PersistenceId.of("myactor")
+  private val persistenceId = PersistenceId.of("my-persistent-actor")
 
 end PersistentActorSpec

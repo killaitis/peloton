@@ -1,17 +1,22 @@
-package peloton.actor.kernel
+package peloton.actor
 
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.Event
 import peloton.persistence.EventStore
-import peloton.actor.Behavior
-import peloton.actor.ActorContext
-import peloton.actor.EventAction
 import peloton.actor.MessageHandler
 import peloton.actor.EventHandler
 
 import cats.effect.IO
 import cats.effect.Clock
+
+enum EventAction[+E]:
+  case Ignore
+  case Persist(event: E)
+
+type MessageHandler[S, M, E] = (state: S, message: M, context: ActorContext[S, M]) => IO[EventAction[E]]
+type EventHandler[S, E] = (state: S, event: E) => S
+
 
 private [peloton] class EventSourcedBehavior[S, M, E](
           persistenceId: PersistenceId,
@@ -21,7 +26,7 @@ private [peloton] class EventSourcedBehavior[S, M, E](
           codec: PayloadCodec[E],
           eventStore: EventStore,
           clock: Clock[IO]
-          ) extends Behavior[S, M]:
+         ) extends Behavior[S, M]:
             
   override def receive(state: S, message: M, context: ActorContext[S, M]): IO[Behavior[S, M]] = 
     for
@@ -30,13 +35,12 @@ private [peloton] class EventSourcedBehavior[S, M, E](
                     case EventAction.Ignore => 
                       IO.unit
 
-                    case EventAction.Snapshot => 
-                      IO.unit
-
-                    case EventAction.Store(event) => 
+                    case EventAction.Persist(event) => 
                       for 
                         now      <- clock.realTimeInstant
-                        storedEv  = Event(payload = event, timestamp = now.toEpochMilli())
+                        storedEv  = Event(payload   = event, 
+                                          timestamp = now.toEpochMilli
+                                         )
                         _        <- eventStore.writeEvent(persistenceId = persistenceId, 
                                                           event         = storedEv
                                                           )
