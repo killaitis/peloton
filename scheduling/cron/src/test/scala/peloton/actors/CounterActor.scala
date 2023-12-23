@@ -1,4 +1,4 @@
-package peloton.cron.actors
+package peloton.actors
 
 import peloton.actor.Actor.CanAsk
 import peloton.actor.Actor.canAsk

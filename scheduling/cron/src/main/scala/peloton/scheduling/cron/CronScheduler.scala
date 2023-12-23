@@ -1,4 +1,4 @@
-package peloton.cron
+package peloton.scheduling.cron
 
 import cats.effect.*
 import cats.effect.std.{Queue, *}

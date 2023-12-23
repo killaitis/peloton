@@ -1,7 +1,9 @@
-package peloton.cron
+package peloton.scheduling.cron
 
 import peloton.actor.ActorSystem
-import peloton.cron.CronScheduler.syntax.*
+import peloton.scheduling.cron.CronScheduler.syntax.*
+
+import peloton.actors.CounterActor
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
@@ -11,7 +13,6 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.*
 
-import actors.CounterActor
 
 class CronSchedulerSpec
     extends AsyncFlatSpec 

@@ -1,5 +1,7 @@
 import Dependencies._
 
+lazy val Benchmark = config("benchmark") extend Test
+
 ThisBuild / version := {
   val Tag = "refs/tags/(.*)".r
   sys.env.get("CI_VERSION")
@@ -21,8 +23,8 @@ ThisBuild / scalacOptions := Seq(
 lazy val root = (project in file("."))
   .aggregate(
     core, 
-    postgresql, 
-    cron
+    `persistence-postgresql`, 
+    `scheduling-cron`
   )
   .settings(
     name                      := "peloton",
@@ -47,8 +49,8 @@ lazy val core = (project in file("core"))
       "org.typelevel" %% "cats-effect"                    % CatsEffectVersion,
 
       // Monocle
-      "dev.optics" %% "monocle-core"                      % MonocleVersion,
-      "dev.optics" %% "monocle-macro"                     % MonocleVersion,
+      // "dev.optics" %% "monocle-core"                      % MonocleVersion,
+      // "dev.optics" %% "monocle-macro"                     % MonocleVersion,
 
       // Circe Json
       "io.circe" %% "circe-generic"                       % CirceVersion,
@@ -77,11 +79,11 @@ lazy val core = (project in file("core"))
     )
   )
 
-lazy val postgresql = (project in file("persistence/postgresql"))
+lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
   .dependsOn(core)
   .settings(
     name                      := "peloton-persistence-postgresql",
-    description               := "Peloton persistence PostgreSQL driver",
+    description               := "Peloton persistence driver for PostgreSQL",
     
     publishTo                 := sonatypePublishToBundle.value,
     publishMavenStyle         := true,
@@ -95,11 +97,11 @@ lazy val postgresql = (project in file("persistence/postgresql"))
     )
   )
 
-lazy val cron = (project in file("cron"))
+lazy val `scheduling-cron` = (project in file("scheduling/cron"))
   .dependsOn(core)
   .settings(
-    name                      := "peloton-cron",
-    description               := "CRON timer scheduling support for Cats Effect",
+    name                      := "peloton-scheduling-cron",
+    description               := "Peloton CRON timer scheduling support for Cats Effect",
     
     publishTo                 := sonatypePublishToBundle.value,
     publishMavenStyle         := true,
@@ -121,10 +123,12 @@ lazy val cron = (project in file("cron"))
     )
   )
 
-lazy val Benchmark = config("benchmark") extend Test
-
 lazy val `integration-tests` = (project in file("integration-tests"))
-  .dependsOn(core, postgresql)
+  .dependsOn(
+    core, 
+    `persistence-postgresql`, 
+    `scheduling-cron`
+  )
   .configs(Benchmark)
   .settings(
     name                      := "peloton-integration-tests",
@@ -152,7 +156,11 @@ lazy val `integration-tests` = (project in file("integration-tests"))
   )
 
 lazy val examples = (project in file("examples"))
-  .dependsOn(core)
+  .dependsOn(
+    core, 
+    `persistence-postgresql`, 
+    `scheduling-cron`
+  )
   .settings(
     name                      := "peloton-examples",
     description               := "Peloton examples",
