@@ -28,19 +28,19 @@ object ToggleActor:
 
   val behaviorA: Behavior[Unit, Message] = (_, message, context) => message match
     case Toggle() => 
-      context.respond(ToggleResponse()) >> 
+      context.reply(ToggleResponse()) >> 
       behaviorB.pure
 
     case GetMode() =>
-      context.respond(GetModeResponse(Mode.ModeA))
+      context.reply(GetModeResponse(Mode.ModeA))
 
   val behaviorB: Behavior[Unit, Message] = (_, message, context) => message match
     case Toggle() => 
-      context.respond(ToggleResponse()) >> 
+      context.reply(ToggleResponse()) >> 
       behaviorA.pure
 
     case GetMode() =>
-      context.respond(GetModeResponse(Mode.ModeB))
+      context.reply(GetModeResponse(Mode.ModeB))
 
   def spawn(name: String)(using actorSystem: ActorSystem) = 
     actorSystem.spawn[Unit, Message](

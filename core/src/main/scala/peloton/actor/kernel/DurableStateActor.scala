@@ -17,12 +17,12 @@ import cats.implicits.*
 import scala.concurrent.duration.FiniteDuration
 
 
-private [peloton] object PersistentActor:
+private [peloton] object DurableStateActor:
 
   /**
-    * Spawns a new [[Actor]] with persistent state.
+    * Spawns a new [[Actor]] with a durable (persistent) state.
     *
-    * The `PersistentActor` is connected to a given [[DurableStateStore]] instance. A given `PersistenceId` 
+    * The `DurableStateActor` is connected to a given [[DurableStateStore]] instance. A given `PersistenceId` 
     * connects this actor instance to a distinct record in the state store, e.g., database row with index key.
     * 
     * When the actor spawns, the last known previous actor state is read from the store and used as the 
@@ -93,7 +93,7 @@ private [peloton] object PersistentActor:
                                                       inbox.offer((message, None)) >> 
                                                       currentBehaviorM
 
-                                                  override def respond[R](response: R) =
+                                                  override def reply[R](response: R) =
                                                     responseChannel.traverse_(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 
@@ -156,4 +156,4 @@ private [peloton] object PersistentActor:
     yield actor
   end spawn
 
-end PersistentActor
+end DurableStateActor

@@ -6,7 +6,7 @@ import scala.concurrent.duration.*
 /**
  * Actors are the basic building blocks of concurrent computation. In response to a message it receives, 
  * an actor can make local decisions, create more actors, send more messages, and determine how to 
- * respond to the next message received. Actors may modify their own private state, but can only 
+ * reply to the next message received. Actors may modify their own private state, but can only 
  * affect each other indirectly through messaging.
  * 
  * Messages sent to an actor are put into a private message inbox. The actor will take each of these messages 

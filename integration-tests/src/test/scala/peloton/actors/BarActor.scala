@@ -36,10 +36,10 @@ object BarActor:
         (state, message, context) => message match
           case Set(s) => 
             context.setState(State(s = s)) >> 
-            context.respond(SetResponse())
+            context.reply(SetResponse())
 
           case Get() => 
-            context.respond(GetResponse(state.s))
+            context.reply(GetResponse(state.s))
     )  
 
 end BarActor

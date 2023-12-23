@@ -21,7 +21,7 @@ object HelloActor:
       initialState    = (),
       initialBehavior = (_, message, context) => message match
         case Message.Hello(greeting) => IO.println(greeting) >> context.currentBehaviorM
-        case Message.HowAreYou       => context.respond(Message.HowAreYouResponse("I'm fine"))
+        case Message.HowAreYou       => context.reply(Message.HowAreYouResponse("I'm fine"))
     )
 end HelloActor
 

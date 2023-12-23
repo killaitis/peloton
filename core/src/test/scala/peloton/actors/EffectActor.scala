@@ -48,26 +48,26 @@ object EffectActor:
                             case Outcome.Succeeded(mol) => 
                               mol.map(mol => List(HandleResult(Some(mol))))
                 _      <- context.setState(State(runningFiber = Some(fiber)))
-                _      <- context.respond(RunResponse(effectStarted = true))
+                _      <- context.reply(RunResponse(effectStarted = true))
               yield context.currentBehavior
             case Some(fiber) => // effect is already running
-              context.respond(RunResponse(effectStarted = false))
+              context.reply(RunResponse(effectStarted = false))
 
         case Cancel() => 
           state.runningFiber match
             case None => // no effect is currently running
-              context.respond(CancelResponse(effectCancelled = false))
+              context.reply(CancelResponse(effectCancelled = false))
             case Some(fiber) => // effect is already running
               for
                 _  <- fiber.cancel
                 _  <- context.setState(State(runningFiber = None))
-                _  <- context.respond(CancelResponse(effectCancelled = true))
+                _  <- context.reply(CancelResponse(effectCancelled = true))
               yield context.currentBehavior
 
         case Get() => 
-          context.respond(GetResponse(meaningOfLife = state.meaningOfLife))
+          context.reply(GetResponse(meaningOfLife = state.meaningOfLife))
 
         case HandleResult(meaningOfLife) => 
             context.setState(State(runningFiber = None, meaningOfLife = meaningOfLife)) >> 
-            context.respond(HandleResultResponse())
+            context.reply(HandleResultResponse())
     )

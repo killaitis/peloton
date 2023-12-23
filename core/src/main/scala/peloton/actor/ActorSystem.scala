@@ -21,6 +21,7 @@ import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import java.net.URI
 
+
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
 
   /**
@@ -28,51 +29,29 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     *
     * @param initialState
     * @param initialBehavior
-    * @param name
     * @return
     */
   def spawn[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
-                  name: String
                  )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
-    spawn(Some(name), StatefulActor.spawn[S, M](initialState, initialBehavior))
+    register(StatefulActor.spawn[S, M](initialState, initialBehavior))
 
   /**
     * Spawns a stateful actor
     *
     * @param initialState
     * @param initialBehavior
+    * @param name
     * @return
     */
   def spawn[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
-                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
-    spawn(None, StatefulActor.spawn[S, M](initialState, initialBehavior))
-
-  /**
-    * Spawns a persistent actor
-    *
-    * @param persistenceId
-    * @param initialState
-    * @param initialBehavior
-    * @param name
-    * @param codec
-    * @param store
-    * @return
-    */
-  def spawn[S, M](persistenceId: PersistenceId,
-                  initialState: S,
-                  initialBehavior: Behavior[S, M],
                   name: String
-                 )(using 
-                  PayloadCodec[S],
-                  DurableStateStore,
-                  reflect.ClassTag[M]
-                 ): IO[ActorRef[M]] =
-    spawn(Some(name), PersistentActor.spawn[S, M](persistenceId, initialState, initialBehavior))
+                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
+    register(StatefulActor.spawn[S, M](initialState, initialBehavior), Some(name))
 
   /**
-    * Spawns a persistent actor
+    * Spawns a durable state actor
     *
     * @param persistenceId
     * @param initialState
@@ -89,7 +68,29 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                   DurableStateStore,
                   reflect.ClassTag[M]
                  ): IO[ActorRef[M]] =
-    spawn(None, PersistentActor.spawn[S, M](persistenceId, initialState, initialBehavior))
+    register(DurableStateActor.spawn[S, M](persistenceId, initialState, initialBehavior))
+
+  /**
+    * Spawns a durable state actor
+    *
+    * @param persistenceId
+    * @param initialState
+    * @param initialBehavior
+    * @param name
+    * @param codec
+    * @param store
+    * @return
+    */
+  def spawn[S, M](persistenceId: PersistenceId,
+                  initialState: S,
+                  initialBehavior: Behavior[S, M],
+                  name: String
+                 )(using 
+                  PayloadCodec[S],
+                  DurableStateStore,
+                  reflect.ClassTag[M]
+                 ): IO[ActorRef[M]] =
+    register(DurableStateActor.spawn[S, M](persistenceId, initialState, initialBehavior), Some(name))
 
   /**
     * Spawns an event sourced actor
@@ -111,7 +112,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                      EventStore,
                      reflect.ClassTag[M]
                     ): IO[ActorRef[M]] =
-    spawn(None, EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler))
+    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler), None)
 
   /**
     * Spawns an event sourced actor
@@ -135,7 +136,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                      EventStore,
                      reflect.ClassTag[M]
                     ): IO[ActorRef[M]] =
-    spawn(Some(name), EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler))
+    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler), Some(name))
 
   /**
     * Obtains the ActorRef for a given actor name
@@ -164,11 +165,11 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     */
   def remoteActorRef[M](uri: URI)(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] =
     for
-      _   <- IO.raiseWhen(uri.getScheme != "peloton")(new IllegalArgumentException(s"unsupported URI scheme: ${uri.getScheme}"))
-      host = uri.getHost
-      port = uri.getPort
-      actorName = uri.getPath.stripPrefix("/") // TODO: THIS IS DIRTY!!!
-      ref <- IO.pure(new RemoteActorRef[M](host = host, port = port, actorName = actorName))
+      _          <- IO.raiseWhen(uri.getScheme != "peloton")(new IllegalArgumentException(s"unsupported URI scheme: ${uri.getScheme}"))
+      host        = uri.getHost
+      port        = uri.getPort
+      actorName   = uri.getPath.stripPrefix("/") // TODO: THIS IS DIRTY!!!
+      ref        <- IO.pure(new RemoteActorRef[M](host = host, port = port, actorName = actorName))
     yield ref
 
   /**
@@ -182,6 +183,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
 
   /**
     * Shuts down the actor system.
+    * 
+    * This will also terminate all running actors. If an actor is currently processing a message, 
+    * termination will wait for the message handler to finish.
     *
     * @return `IO[Unit]`
     */
@@ -191,7 +195,25 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
       _    <- refs.values.toList.traverse_(_.terminate)
     yield ()
 
-  private def spawn[M](maybeName: Option[String], spawnF: => IO[Actor[M]])(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] = 
+  /**
+    * Internal implementation for registering a new actor in the actor system
+    *
+    * @param spawnF
+    *   A by-name parameter of an effect that, on evaluation, will create the new actor.
+    * @param maybeName
+    *   An optional name for the actor. The name has to be unique inside of the actor system. 
+    *   The function will fail if an actor is already registered with this name. If the parameter 
+    *   is omitted or set to `None`, a random name will be generated.
+    * @param ct
+    *   A given `ClassTag` of the actor's message type `M`
+    * @return 
+    *   An `IO` that evaluates to an `ActorRef` to the new actor.
+    */
+  private def register[M](spawnF: => IO[Actor[M]], 
+                          maybeName: Option[String] = None
+                         )(using 
+                          ct: reflect.ClassTag[M]
+                         ): IO[ActorRef[M]] = 
     actorRefs.evalModify: refs =>
       for
         name     <- maybeName match
@@ -199,7 +221,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                       case None       => UUIDGen.randomString[IO]
         _        <- IO.assert(!refs.contains(name))(IllegalArgumentException(s"An actor with name '$name' already exists!"))
         actor    <- spawnF
-        actorRef  = new ActorRef[M] {
+        actorRef  = new ActorRef[M]:
                       override def classTag = ct
                       override def tell(message: M): IO[Unit] = actor.tell(message)
                       override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = actor.ask(message)
@@ -208,10 +230,12 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                           for
                             _ <- if refs.contains(name) then actor.terminate else IO.unit
                           yield (refs - name)
-                    }
+
       yield (refs + (name -> actorRef), actorRef)
+  end register
 
 end ActorSystem
+
 
 object ActorSystem:
 

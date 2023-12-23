@@ -97,7 +97,7 @@ private [peloton] object EventSourcedActor:
                                                       inbox.offer((message, None)) >>
                                                       currentBehaviorM
 
-                                                  override def respond[R](response: R) =
+                                                  override def reply[R](response: R) =
                                                     responseChannel.traverse_(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 

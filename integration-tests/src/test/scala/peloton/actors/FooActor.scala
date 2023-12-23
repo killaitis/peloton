@@ -35,10 +35,10 @@ object FooActor:
         (state, message, context) => message match
           case Set(x, y) => 
             context.setState(State(x = x, y = y)) >>
-            context.respond(SetResponse())
+            context.reply(SetResponse())
 
           case Get() => 
-            context.respond(GetResponse(state.x, state.y))
+            context.reply(GetResponse(state.x, state.y))
     )
     
 end FooActor

@@ -22,7 +22,7 @@ import org.scalatest.Tag
 
 object Benchmark extends Tag("Benchmark")
 
-class PersistentActorBenchmark
+class DurableStateActorBenchmark
   extends AsyncFlatSpec 
     with AsyncIOSpec 
     with Matchers:
@@ -31,7 +31,7 @@ class PersistentActorBenchmark
 
   val config = PostgreSQLSpec.testContainerConfig
 
-  behavior of "The DurableStateStore factory"
+  behavior of "DurableStateActors"
 
   it should "handle parallel load with many messages" taggedAs(Benchmark) in:
     load(numActors = 10, numMessages = 10_000)
@@ -45,7 +45,7 @@ class PersistentActorBenchmark
     
   private def load(numActors: Int, numMessages: Int)(using clock: Clock[IO]): IO[Unit] = 
     for
-      _      <- info"### Performing load test with $numActors actors and $numMessages messages per actor"
+      _      <- info"### Performing load test with 2x$numActors actors and $numMessages messages per actor"
       
       _      <- ActorSystem.use(config) { _ ?=> 
                   DurableStateStore.use(config) { store ?=>
@@ -112,43 +112,4 @@ class PersistentActorBenchmark
                 }
     yield ()
 
-end PersistentActorBenchmark
-
-/*
-object PersistentActorBenchmark:
-
-  private lazy val postgresContainer: PostgreSQLContainer[Nothing] =
-    val imageName = DockerImageName.parse("postgres").withTag("14.5")
-    val container = new PostgreSQLContainer(imageName)
-    container.start()
-    container
-    
-  def getConfigForDockerizedPostgres() =
-    val dbHost = postgresContainer.getHost()
-    val dbPort = postgresContainer.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)
-    val dbName = postgresContainer.getDatabaseName()
-    val dbUsername = postgresContainer.getUsername()
-    val dbPassword = postgresContainer.getPassword()
-    val jdbcUrl = s"jdbc:postgresql://$dbHost:$dbPort/$dbName"
-    getConfig(jdbcUrl = jdbcUrl, dbUsername = dbUsername, dbPassword = dbPassword)
-
-  def getConfig(jdbcUrl: String, dbUsername: String, dbPassword: String) =
-    config.Config.string(
-      s"""
-        |peloton {
-        |  persistence {
-        |    driver = peloton.persistence.postgresql.Driver
-        |    params {
-        |      url               = "$jdbcUrl"
-        |      user              = "$dbUsername"
-        |      password          = "$dbPassword"
-        |      maximum-pool-size = 10
-        |    }
-        |  }
-        |}
-      """.stripMargin
-    )
-  end getConfig
-
-end DurableStateStoreFactorySpec
-*/
+end DurableStateActorBenchmark

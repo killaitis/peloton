@@ -64,12 +64,12 @@ object CountingActor:
                             message match
                               case Open => 
                                 npStateRef.set(NPState(isOpen = true)) >>
-                                context.respond(OpenResponse) >> 
+                                context.reply(OpenResponse) >> 
                                 context.unstashAll()
 
                               case Close => 
                                 npStateRef.set(NPState(isOpen = false)) >>
-                                context.respond(CloseResponse)
+                                context.reply(CloseResponse)
 
                               case Inc =>
                                 for
@@ -81,7 +81,7 @@ object CountingActor:
                               case GetState =>
                                 for
                                   npState  <- npStateRef.get
-                                  _        <- context.respond(GetStateResponse(isOpen = npState.isOpen, counter = state.counter))
+                                  _        <- context.reply(GetStateResponse(isOpen = npState.isOpen, counter = state.counter))
                                 yield context.currentBehavior
 
                               case Fail => 

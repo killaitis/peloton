@@ -21,7 +21,7 @@ object CounterActor:
   private val behavior: Behavior[Int, Message] = 
     (counter, message, context) => message match
       case Inc => context.setState(counter + 1)
-      case Get => context.respond(counter)
+      case Get => context.reply(counter)
 
   def spawn(using actorSystem: ActorSystem) = 
     actorSystem.spawn[Int, Message](

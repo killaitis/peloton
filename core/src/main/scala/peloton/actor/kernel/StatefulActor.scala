@@ -15,10 +15,11 @@ import scala.concurrent.duration.FiniteDuration
 private [peloton] object StatefulActor:
 
   /**
-    * Spawn a new [[Actor]] with stateful behavior. 
+    * Spawn a new [[Actor]] with simple, stateful behavior. 
     * 
     * The actor maintains an internal state which is passed to the message handler an can be updated using
-    * the context's [[Context.setState]] method.
+    * the context's [[Context.setState]] method. The state is kept only in memory and is not persisted in 
+    * any way.
     *
     * @param initialState 
     *   The initial state for the actor.
@@ -63,7 +64,7 @@ private [peloton] object StatefulActor:
                                                       inbox.offer((message, None)) >>
                                                       currentBehaviorM
 
-                                                  override def respond[R](response: R) =
+                                                  override def reply[R](response: R) =
                                                     responseChannel.traverse_(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 

@@ -25,9 +25,9 @@ object CascadingActor:
                               case Some(delegate) => 
                                 for
                                   delegateResponse <- delegate ? Hello(hello)
-                                  _                <- context.respond(HelloResponse(name :: delegateResponse.stack))
+                                  _                <- context.reply(HelloResponse(name :: delegateResponse.stack))
                                 yield context.currentBehavior
 
                               case None => 
-                                context.respond(HelloResponse(name :: hello :: Nil))
+                                context.reply(HelloResponse(name :: hello :: Nil))
     )

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.0
+- Introduced event sourced actors.
+- Introduced CRON-based scheduling for Cats Effect.
+- Improved store factory for better handling of `DurableStateStore` and `EventStore`.
+- *API change*: `ActorContext.respond` has been renamed to `ActorContext.reply`.
+
 ## v0.2.1
 - Dependency updates 
 - Switched releases to new artifact versioning scheme. Artifacts now omit the `v` in the version string (e.g. `peloton-core_3-0.2.1`).

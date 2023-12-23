@@ -51,13 +51,13 @@ trait ActorContext[S, M](val currentBehavior: Behavior[S, M]):
     * @return
     *   The current behavior of the actor.
     */
-  def respond[R](response: R): IO[Behavior[S, M]]
+  def reply[R](response: R): IO[Behavior[S, M]]
   
   /**
     * Replace the current state of the actor with a new state. 
     * 
     * Under the hood, the current state might be either stored in memory (like in the [[peloton.actor.kernel.StatefulActor]]) 
-    * or on a persistent storage (like in [[peloton.actor.kernel.PersistentActor]]).
+    * or on a persistent storage (like in [[peloton.actor.kernel.DurableStateActor]]).
     *
     * @param newState 
     *   The new state

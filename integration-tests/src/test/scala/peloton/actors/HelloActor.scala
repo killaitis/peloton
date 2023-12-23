@@ -26,7 +26,7 @@ object HelloActor:
                             IO.println(greeting) >> context.setState(true)
                           case Message.HowAreYou => 
                             if alreadyGreeted 
-                            then context.respond(Message.HowAreYouResponse("I'm fine"))
-                            else context.respond(Message.HowAreYouResponse("Feeling lonely"))
+                            then context.reply(Message.HowAreYouResponse("I'm fine"))
+                            else context.reply(Message.HowAreYouResponse("Feeling lonely"))
     )
 end HelloActor

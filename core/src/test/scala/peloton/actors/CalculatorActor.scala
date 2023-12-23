@@ -44,7 +44,7 @@ object CalculatorActor:
         IO.pure(EventAction.Persist(SubEvent(value)))
 
       case GetState =>
-        context.respond(GetStateResponse(state.value)) >> 
+        context.reply(GetStateResponse(state.value)) >> 
         IO.pure(EventAction.Ignore)
 
 

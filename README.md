@@ -24,21 +24,23 @@
 
 Peloton aims to be a lightweight and playful actor library for Cats Effect. It provides support for
 
-- stateful actors: actors that hold and modify a state of a generic type in memory.
-- persistent actors: actors that hold a state of a generic type in memory and can store the state in a durable state store. This state is then restored 
-  automatically after the application restarts.
-- message stashes: each actor is able to postpone the processing of incoming messages by pushing them to a stash and can pull back the messages from the stash later
-- changing behavior: the actor's message handler, i.e., the current behavior, possibly returns a new behavior - depending on the actor's state and/or the message.
-- scheduling effects: effects can be scheduled using a Quartz-compatible CRON expression and evaluated in the background.
+- *stateful actors*: actors that hold and modify a state of a specific type in memory.
+- *event sourced actors*: actors that convert messages to events that are persisted in an event store and replayed adter the actor restarts.
+- *durable state actors*: actors that hold a state of a specific type in memory and can store the state in a durable state store. This state is then restored 
+  automatically after the actor restarts.
+- *message stashes*: each actor is able to postpone the processing of incoming messages by pushing them to a stash and can pull back the messages from the stash later
+- *changing behavior*: the actor's message handler, i.e., the current behavior, possibly returns a new behavior - depending on the actor's state and/or the message.
+- *scheduled effects*: effects can be scheduled using a Quartz-compatible CRON expression and triggered and evaluated in the background.
 
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
 ## Get started
-Add the following dependency to your `build.sbt` file:
+Add the following dependencies to your `build.sbt` file:
 ```sbt
 libraryDependencies ++= Seq(
   "de.killaitis" %% "peloton-core"                    % PelotonVersion,
-  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion // optional
+  "de.killaitis" %% "peloton-cron"                    % PelotonVersion, // optional
+  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion  // optional
 )
 ```
 

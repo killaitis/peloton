@@ -18,16 +18,16 @@ import utils.DurableStateStoreMock
 import actors.CountingActor
 
 
-class PersistentActorSpec
+class DurableStateActorSpec
     extends AsyncFlatSpec 
       with AsyncIOSpec 
       with OptionValues
       with Matchers:
 
-  behavior of "A PersistentActor"
+  behavior of "A DurableStateActor"
 
-  import PersistentActorSpec.*
-  import PersistentActorSpec.given
+  import DurableStateActorSpec.*
+  import DurableStateActorSpec.given
 
   val store = summon[DurableStateStore]
 
@@ -138,12 +138,12 @@ class PersistentActorSpec
         _      <- actor.terminate
       yield ()
 
-end PersistentActorSpec
+end DurableStateActorSpec
 
-object PersistentActorSpec:
+object DurableStateActorSpec:
   private given PayloadCodec[CountingActor.State] = persistence.JsonPayloadCodec.create
   private given DurableStateStore = new DurableStateStoreMock
   
   private val persistenceId = PersistenceId.of("my-persistent-actor")
 
-end PersistentActorSpec
+end DurableStateActorSpec
