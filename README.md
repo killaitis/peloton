@@ -24,13 +24,15 @@
 
 Peloton aims to be a lightweight and playful actor library for Cats Effect. It provides support for
 
-- *stateful actors*: actors that hold and modify a state of a specific type in memory.
-- *event sourced actors*: actors that convert messages to events that are persisted in an event store and replayed adter the actor restarts.
-- *durable state actors*: actors that hold a state of a specific type in memory and can store the state in a durable state store. This state is then restored 
+- **Actor systems**: control the lifespan of actors and ensure safe resource management.
+- **Stateful actors**: actors that hold and modify a state of a specific type in memory.
+- **Event sourced actors**: actors that convert messages to events that are persisted in an event store and replayed adter the actor restarts.
+- **Durable state actors**: actors that hold a state of a specific type in memory and can store the state in a durable state store. This state is then restored 
   automatically after the actor restarts.
-- *message stashes*: each actor is able to postpone the processing of incoming messages by pushing them to a stash and can pull back the messages from the stash later
-- *changing behavior*: the actor's message handler, i.e., the current behavior, possibly returns a new behavior - depending on the actor's state and/or the message.
-- *scheduled effects*: effects can be scheduled using a Quartz-compatible CRON expression and triggered and evaluated in the background.
+- **Message stashes**: each actor is able to postpone the processing of incoming messages by pushing them to a stash and can pull back the messages from the stash later
+- **Changing behavior**: the actor's message handler, i.e., the current behavior, possibly returns a new behavior - depending on the actor's state and/or the message.
+- **Remote actors**: an actor system can provide an HTTP interface to other actor system on different hosts and make its local actors available to these actor systems.
+- **Scheduled effects**: effects can be scheduled using a Quartz-compatible CRON expression and triggered and evaluated in the background.
 
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
@@ -39,15 +41,19 @@ Add the following dependencies to your `build.sbt` file:
 ```sbt
 libraryDependencies ++= Seq(
   "de.killaitis" %% "peloton-core"                    % PelotonVersion,
-  "de.killaitis" %% "peloton-cron"                    % PelotonVersion, // optional
-  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion  // optional
+
+  // PostgreSQL driver for persistent actors (optional)
+  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion,
+
+  // CRON-based background scheduling of effects. (optional) 
+  "de.killaitis" %% "peloton-scheduling-cron"         % PelotonVersion 
 )
 ```
 
-Peloton is available for Scala 3. Support for older releases of Scala is currently not planned.
+Peloton is only available for Scala 3. Support for older releases of Scala is currently not planned.
 
 ## Concepts
 The core concepts of Peloton are described [here](./docs/Concepts.md).
 
 ## Examples
-Examples can be found in the `examples` folder.
+For an easyer start, examples can be found in the [examples](./examples/) folder.
