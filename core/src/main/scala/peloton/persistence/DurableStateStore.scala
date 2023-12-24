@@ -134,7 +134,13 @@ object DurableStateStore:
     actualRevision: Long
   ) extends Error
 
-  def create(config: Config): IO[Resource[IO, DurableStateStore]] =
+  def make(): IO[Resource[IO, DurableStateStore]] = 
+    for
+      config <- Config.default()
+      store  <- make(config)
+    yield store
+
+  def make(config: Config): IO[Resource[IO, DurableStateStore]] =
     for
       persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
       driver             <- IO.fromTry(Try {
@@ -147,9 +153,15 @@ object DurableStateStore:
       store            <- driver.createDurableStateStore(persistenceConfig)
     yield store
 
+  def use[A](f: DurableStateStore ?=> IO[A]): IO[A] = 
+    for
+      store  <- make()
+      retval <- store.use { case given DurableStateStore => f }
+    yield retval
+
   def use[A](config: Config)(f: DurableStateStore ?=> IO[A]): IO[A] = 
     for
-      store  <- create(config)
+      store  <- make(config)
       retval <- store.use { case given DurableStateStore => f }
     yield retval
 
