@@ -35,7 +35,7 @@ final case class CronScheduler private (
     * @param cron 
     *   A valid Quartz CRON expression
     * @param timezone
-    *   A Java [[TimeZone]]. This is used by Quartz and will affect the evaluation of the CRON expression
+    *   A Java `TimeZone`. This is used by Quartz and will affect the evaluation of the CRON expression
     * @param effect
     *   An effect that is executed when Quartz fires a CRON event
     * @return
@@ -170,7 +170,7 @@ object CronScheduler:
         * @param cron
         *   A valid Quartz CRON expression 
         * @param timezone
-        *   A Java [[TimeZone]]. This will influence the evaluation of the CRON expression
+        *   A Java `TimeZone`. Used to evaluate the CRON expression. Defaults to the system timezone.
         * @param scheduler
         *   a given [[CronScheduler]] which will be used to schedule the effect
         * @return
