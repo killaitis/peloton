@@ -55,13 +55,11 @@ object CalculatorActor:
 
 
   def spawn(persistenceId: PersistenceId, name: String = "CalculatorActor")(using EventStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
-    for
-      actor        <- actorSystem.spawn[State, Message, Event](
-                        name            = name,
-                        persistenceId   = persistenceId, 
-                        initialState    = State(),
-                        messageHandler  = messageHandler,
-                        eventHandler    = eventHandler
-                      )
-    yield actor
+    actorSystem.spawn[State, Message, Event](
+      name            = name,
+      persistenceId   = persistenceId, 
+      initialState    = State(),
+      messageHandler  = messageHandler,
+      eventHandler    = eventHandler
+    )
   
