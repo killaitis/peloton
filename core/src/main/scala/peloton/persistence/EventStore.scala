@@ -57,12 +57,12 @@ trait EventStore:
   def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit]
 
   /**
-    * Reads all [[Event]]s for type `A` from the storage backend.
+    * Reads all [[Event]]s of type `A` for a given [[PersistenceId]] from the storage backend.
     *
     * @param persistenceId
     *   The [[PersistenceId]] of the instance to read
     * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert instances of type `A` to a byte array and vice versa
+    *   a given [[PayloadCodec]] to convert events of type `A` to a byte array and vice versa
     * @return
     *   An `fs2.Stream` of [[Event]]
     */
@@ -71,7 +71,10 @@ trait EventStore:
       .evalMap { encodedEvent => 
         payloadCodec
           .decode(encodedEvent.payload)
-          .map(a => Event(payload = a, timestamp = encodedEvent.timestamp)) 
+          .map(payload => Event(payload     = payload, 
+                                timestamp   = encodedEvent.timestamp
+                               )
+          ) 
       }
     
   /**
@@ -80,17 +83,17 @@ trait EventStore:
     * @param persistenceId
     *   The [[PersistenceId]] of the durable state instance to write
     * @param state
-    *   The [[DurableState]] of type `A`
+    *   The [[Event]] of type `A`
     * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert instances of type `A` to a byte array and vice versa
+    *   a given [[PayloadCodec]] to convert events of type `A` to a byte array and vice versa
     * @return
     *   An `IO[Unit]`
     */
   def writeEvent[A](persistenceId: PersistenceId, event: Event[A])(using payloadCodec: PayloadCodec[A]): IO[Unit] = 
     for
       encodedPayload   <- payloadCodec.encode(event.payload)
-      encodedEvent      = EncodedEvent(payload   = encodedPayload, 
-                                       timestamp = event.timestamp
+      encodedEvent      = EncodedEvent(payload    = encodedPayload,
+                                       timestamp  = event.timestamp
                                       )
       _                <- writeEncodedEvent(persistenceId, encodedEvent)
     yield ()

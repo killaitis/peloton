@@ -13,43 +13,61 @@ import doobie.implicits.*
 
 private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extends EventStore:
 
-  def create(): IO[Unit] = 
+
+  override def create(): IO[Unit] = 
     (
       for 
-        _  <- sql"""
-                create table if not exists event_store (
-                  persistence_id  varchar(255)  not null,
-                  payload         bytea         not null,
-                  timestamp       bigint        not null,
+        _  <- sql"create schema if not exists peloton".update.run
 
-                  primary key (persistence_id, timestamp)
+        _  <- sql"""
+                create table if not exists peloton.event_store (
+                  persistence_id  varchar(255)  not null,
+                  sequence_id     bigint        not null,
+                  timestamp       bigint        not null,
+                  payload         bytea         not null,
+
+                  primary key (persistence_id, sequence_id)
                 )
               """.update.run
+
+        _  <- sql"create sequence if not exists peloton.event_store_seq".update.run
       yield ()
     ).transact(xa)
 
-  def drop(): IO[Unit] =
-    sql"drop table if exists event_store"
+  override def drop(): IO[Unit] =
+    (
+      for
+        _  <- sql"drop table if exists peloton.event_store".update.run
+        _  <- sql"drop sequence if exists peloton.event_store_seq".update.run
+      yield ()
+    ).transact(xa).void
+
+  override def clear(): IO[Unit] =
+    sql"truncate table peloton.event_store"
       .update.run.transact(xa).void
 
-  def clear(): IO[Unit] =
-    sql"truncate table event_store"
-      .update.run.transact(xa).void
-
-  def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] =
-    sql"select payload, timestamp from event_store where persistence_id = ${persistenceId.toString()} order by timestamp"
-      .query[EncodedEvent].stream.transact(xa)
-
-  def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit] =
+  override def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] =
     sql"""
-      insert into event_store (
+      select 
+        payload, 
+        timestamp 
+      from peloton.event_store 
+      where persistence_id = ${persistenceId.toString()} 
+      order by sequence_id
+    """.query[EncodedEvent].stream.transact(xa)
+
+  override def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit] =
+    sql"""
+      insert into peloton.event_store (
         persistence_id,
-        payload,
-        timestamp
+        sequence_id,
+        timestamp,
+        payload
       ) values (
         ${persistenceId.toString()},
-        ${encodedEvent.payload},
-        ${encodedEvent.timestamp}
+        nextval('peloton.event_store_seq'),
+        ${encodedEvent.timestamp},
+        ${encodedEvent.payload}
       )
     """.update.run.transact(xa).void
 

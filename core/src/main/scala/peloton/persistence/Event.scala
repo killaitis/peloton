@@ -7,4 +7,7 @@ package peloton.persistence
   * @param payload the payload, i.e., the serialize actor message.
   * @param timestamp the timestamp when the event was written
   */
-final case class Event[A](payload: A, timestamp: Long)
+final case class Event[A](
+  payload: A,
+  timestamp: Long
+)

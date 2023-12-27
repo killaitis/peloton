@@ -49,10 +49,25 @@ abstract class EventStoreSpec
         _      <- store.writeEvent(persistenceId, event2)
         _      <- store.writeEvent(persistenceId, event3)
         _      <- store.readEvents(persistenceId).compile.toList asserting { 
-                    _ shouldBe List(event2, event3, event1) // ordered by event timestamp
+                    _ shouldBe List(event1, event2, event3)
                   }
       yield ()
 
+  it should "handle the order of events with the same timestamp correctly" in:
+    EventStore.use(config): store ?=> 
+      for
+        _      <- store.drop()
+        _      <- store.create()
+        event1   = Event(payload   = MyEvent(i = 24, s = "Peloton"), timestamp = 100L)
+        event2   = Event(payload   = MyEvent(i = 33, s = "Scala"),   timestamp = 100L)
+        event3   = Event(payload   = MyEvent(i = 16, s = "Cats"),    timestamp = 100L)
+        _      <- store.writeEvent(persistenceId, event1)
+        _      <- store.writeEvent(persistenceId, event2)
+        _      <- store.writeEvent(persistenceId, event3)
+        _      <- store.readEvents(persistenceId).compile.toList asserting { 
+                    _ shouldBe List(event1, event2, event3)
+                  }
+      yield ()
 
 end EventStoreSpec
 

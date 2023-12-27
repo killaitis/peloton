@@ -127,6 +127,7 @@ end DurableStateStore
 
 
 object DurableStateStore:
+  
   sealed trait Error extends Exception
   final case class RevisionMismatchError(
     persistenceId: PersistenceId, 
