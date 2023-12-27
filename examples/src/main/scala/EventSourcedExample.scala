@@ -9,6 +9,7 @@ import peloton.persistence.PayloadCodec
 import peloton.persistence.JsonPayloadCodec
 
 import cats.effect.{IO, IOApp}
+import peloton.actor.SnapshotPredicate
 
 
 // An actor that tracks body energy. Eating or drinking increases the 
@@ -89,6 +90,10 @@ object EnergyTrackerActor:
   // to (de)serialize them when reading from and writing to the event store.
   private given PayloadCodec[Event] = JsonPayloadCodec.create
 
+  // The event store also needs a given instance of a PayloadCodec for our state
+  // to (de)serialize it when creating or reading snapshots.
+  private given PayloadCodec[State] = JsonPayloadCodec.create
+
   // --- MESSAGE HANDLER -------------------------------------------------------
 
   // The message handler has access to the current state of the actor and the actor
@@ -140,10 +145,11 @@ object EnergyTrackerActor:
   // - An EventStore
   def spawn()(using actorSystem: ActorSystem)(using EventStore) = 
     actorSystem.spawn[State, Message, Event](
-      persistenceId   = PersistenceId.of("energy-tracker-actor"), 
-      initialState    = State(),
-      messageHandler  = messageHandler,
-      eventHandler    = eventHandler
+      persistenceId     = PersistenceId.of("energy-tracker-actor"), 
+      initialState      = State(),
+      messageHandler    = messageHandler,
+      eventHandler      = eventHandler,
+      snapshotPredicate = SnapshotPredicate.noSnapshots
     )
 
 end EnergyTrackerActor
