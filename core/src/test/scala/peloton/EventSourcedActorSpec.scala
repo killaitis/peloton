@@ -12,6 +12,7 @@ import org.scalatest.OptionValues
 import utils.EventStoreMock
 
 import actors.CalculatorActor
+import peloton.actor.SnapshotPredicate
 
 
 class EventSourcedActorSpec
@@ -31,20 +32,23 @@ class EventSourcedActorSpec
     ActorSystem.use: _ ?=> 
       for
         _      <- eventStore.clear()
+
         actor  <- CalculatorActor.spawn(persistenceId)
         _      <- actor ! CalculatorActor.Add(23)
         _      <- actor ! CalculatorActor.Add(11)
         _      <- actor ! CalculatorActor.Sub(5)
         _      <- actor ! CalculatorActor.Add(2)
+
         _      <- (actor ? CalculatorActor.GetState).asserting:
                     _ shouldBe CalculatorActor.GetStateResponse(value = 31)
-        _      <- eventStore.readEvents[CalculatorActor.Event](persistenceId).compile.toList.asserting:
-                    _.map(_.payload) shouldBe List(
-                                  CalculatorActor.AddEvent(23),
-                                  CalculatorActor.AddEvent(11),
-                                  CalculatorActor.SubEvent(5),
-                                  CalculatorActor.AddEvent(2)
-                                )
+                    
+        _      <- readEvents.asserting:
+                    _ shouldBe List(
+                        CalculatorActor.AddEvent(23),
+                        CalculatorActor.AddEvent(11),
+                        CalculatorActor.SubEvent(5),
+                        CalculatorActor.AddEvent(2)
+                      )
         _      <- actor.terminate
       yield ()
 
@@ -69,10 +73,42 @@ class EventSourcedActorSpec
         _      <- actor.terminate
       yield ()
 
+  it should "create snapshots when the snapshot predicate is matching " in:
+    ActorSystem.use: _ ?=> 
+      for
+        _      <- eventStore.clear()
+
+        actor  <- CalculatorActor.spawn(persistenceId, snapshotPredicate = SnapshotPredicate.each(3))
+        _      <- actor ! CalculatorActor.Add(23)
+        _      <- actor ! CalculatorActor.Add(11)
+        _      <- actor ! CalculatorActor.Sub(5) // <- snapshot: 23+11-5 = 29
+        _      <- actor ! CalculatorActor.Add(2)
+        _      <- actor ! CalculatorActor.Add(6)
+        state1 <- actor ? CalculatorActor.GetState
+        _      <- actor.terminate
+
+        _      <- readEvents.asserting:
+                    _ shouldBe List(
+                        CalculatorActor.State(29),
+                        CalculatorActor.AddEvent(2),
+                        CalculatorActor.AddEvent(6)
+                      )
+      yield ()
+
 end EventSourcedActorSpec
 
 
 object EventSourcedActorSpec:
-  private given EventStore = new EventStoreMock
+  private given eventStore: EventStore = new EventStoreMock
   
   private val persistenceId = PersistenceId.of("my-event-sourced-actor")
+
+  private def readEvents(using eventStore: EventStore) = 
+    eventStore
+      .readEvents[CalculatorActor.State, CalculatorActor.Event](persistenceId)
+      .compile
+      .toList
+      .map(_.map {
+          case snapshot: Snapshot[CalculatorActor.State] => snapshot.payload
+          case event: Event[CalculatorActor.Event]       => event.payload
+      })

@@ -24,7 +24,16 @@ class EventStoreMock extends EventStore:
   override def clear(): IO[Unit] = IO.pure(encodedEvents.clear())
 
   override def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] = 
-    Stream.emits(encodedEvents.getOrElse(persistenceId, Vector.empty[EncodedEvent]))
+    val events = encodedEvents.getOrElse(persistenceId, Vector.empty[EncodedEvent])
+    val indexOfLastSnapshot = events.lastIndexWhere(_.isSnapshot)
+    val eventsSinceLastSnapshot = 
+      if indexOfLastSnapshot > 0 
+      then events.drop(indexOfLastSnapshot)
+      else events
+    println(s"### events = $events")
+    println(s"### indexOfLastSnapshot = $indexOfLastSnapshot")
+    println(s"### eventsSinceLastSnapshot = $eventsSinceLastSnapshot")
+    Stream.emits(eventsSinceLastSnapshot)
 
   override def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit] =
     IO {

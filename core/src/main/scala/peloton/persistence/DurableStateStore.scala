@@ -4,8 +4,6 @@ import peloton.config.Config
 
 import cats.effect.{IO, Resource}
 
-import scala.util.Try
-
 
 /**
   * The persistence layer typeclass for a given state class `A` that provides methods to store and retrieve
@@ -71,21 +69,23 @@ abstract class DurableStateStore:
   def writeEncodedState(persistenceId: PersistenceId, encodedState: EncodedState): IO[Unit]
 
   /**
-    * Reads the current revision of the [[DurableState]] for type `A` from storage backend.
+    * Reads the current revision of the [[DurableState]] for payload type `S` from storage backend.
     *
+    * @tparam S
+    *   The state's payload type
     * @param persistenceId
     *   The [[PersistenceId]] of the durable state instance to read
     * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert instances of type `A` to a byte array and vice versa
+    *   a given [[PayloadCodec]] to convert [[DurableState]] instances of payload type `S` to a byte array and vice versa
     * @return
     *   `Some` [[DurableState]] if the entry exists in the storage backend, else `None`
     */
-  def read[A](persistenceId: PersistenceId)(using payloadCodec: PayloadCodec[A]): IO[Option[DurableState[A]]] = 
+  def read[S](persistenceId: PersistenceId)(using payloadCodec: PayloadCodec[S]): IO[Option[DurableState[S]]] = 
     for
       maybeEncodedState  <- readEncodedState(persistenceId)
       maybeDecodedState  <- maybeEncodedState match
                               case None => 
-                                IO.pure[Option[DurableState[A]]](None)
+                                IO.pure[Option[DurableState[S]]](None)
                               case Some(encodedState) => 
                                 payloadCodec
                                   .decode(encodedState.payload)
@@ -98,22 +98,24 @@ abstract class DurableStateStore:
     yield maybeDecodedState
     
   /**
-    * Writes a new revision of the [[DurableState]] for type `A` into the storage backend.
+    * Writes a new revision of the [[DurableState]] for payload type `S` into the storage backend.
     *
     * The method will fail if the revision of new encoded state is not exactly the successor of the revision of the 
     * current encoded state, i.e., `newRevision == currentRevision + 1`. This ensures that there is no collision with 
     * persistence IDs that have accidentally been used multiple times.
     * 
+    * @tparam S
+    *   The state's payload type
     * @param persistenceId
     *   The [[PersistenceId]] of the durable state instance to write
     * @param state
-    *   The [[DurableState]] of type `A`
+    *   The [[DurableState]] of payload type `S`
     * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert instances of type `A` to a byte array and vice versa
+    *   a given [[PayloadCodec]] to convert [[DurableState]] instances of payload type `S` to a byte array and vice versa
     * @return
     *   An `IO[Unit]`
     */
-  def write[A](persistenceId: PersistenceId, state: DurableState[A])(using payloadCodec: PayloadCodec[A]): IO[Unit] = 
+  def write[S](persistenceId: PersistenceId, state: DurableState[S])(using payloadCodec: PayloadCodec[S]): IO[Unit] = 
     for
       encodedPayload   <- payloadCodec.encode(state.payload)
       encodedState      = EncodedState(payload = encodedPayload, 
@@ -144,14 +146,8 @@ object DurableStateStore:
   def make(config: Config): IO[Resource[IO, DurableStateStore]] =
     for
       persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
-      driver             <- IO.fromTry(Try {
-                              val classLoader = this.getClass().getClassLoader()
-                              val driverClass = classLoader.loadClass(persistenceConfig.driver)
-                              val ctor        = driverClass.getConstructor()
-                              val driver      = ctor.newInstance().asInstanceOf[Driver]
-                              driver
-                            })
-      store            <- driver.createDurableStateStore(persistenceConfig)
+      driver             <- Driver(persistenceConfig.driver)
+      store              <- driver.createDurableStateStore(persistenceConfig)
     yield store
 
   def use[A](f: DurableStateStore ?=> IO[A]): IO[A] = 

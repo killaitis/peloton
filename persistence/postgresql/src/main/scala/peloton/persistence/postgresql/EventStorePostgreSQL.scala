@@ -19,18 +19,19 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
       for 
         _  <- sql"create schema if not exists peloton".update.run
 
+        _  <- sql"create sequence if not exists peloton.event_store_seq".update.run
+
         _  <- sql"""
                 create table if not exists peloton.event_store (
                   persistence_id  varchar(255)  not null,
-                  sequence_id     bigint        not null,
+                  sequence_id     bigint        not null default nextval('peloton.event_store_seq'),
                   timestamp       bigint        not null,
+                  is_snapshot     boolean       not null default false,
                   payload         bytea         not null,
 
                   primary key (persistence_id, sequence_id)
                 )
               """.update.run
-
-        _  <- sql"create sequence if not exists peloton.event_store_seq".update.run
       yield ()
     ).transact(xa)
 
@@ -48,11 +49,19 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
 
   override def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] =
     sql"""
-      select 
+      select
         payload, 
-        timestamp 
+        timestamp,
+        is_snapshot
       from peloton.event_store 
-      where persistence_id = ${persistenceId.toString()} 
+      where 
+            persistence_id = ${persistenceId.toString()} 
+        and sequence_id >= (select coalesce(max(sequence_id), 0)
+                            from peloton.event_store 
+                            where 
+                              persistence_id = ${persistenceId.toString()} 
+                              and is_snapshot = true
+                           ) 
       order by sequence_id
     """.query[EncodedEvent].stream.transact(xa)
 
@@ -60,14 +69,14 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
     sql"""
       insert into peloton.event_store (
         persistence_id,
-        sequence_id,
         timestamp,
-        payload
+        payload,
+        is_snapshot
       ) values (
         ${persistenceId.toString()},
-        nextval('peloton.event_store_seq'),
         ${encodedEvent.timestamp},
-        ${encodedEvent.payload}
+        ${encodedEvent.payload},
+        ${encodedEvent.isSnapshot}
       )
     """.update.run.transact(xa).void
 

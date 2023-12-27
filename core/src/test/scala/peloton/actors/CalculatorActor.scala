@@ -12,6 +12,7 @@ import peloton.persistence.EventStore
 import peloton.persistence.PayloadCodec
 import peloton.persistence.JsonPayloadCodec
 import peloton.actor.ActorContext
+import peloton.actor.SnapshotPredicate
 
 /**
   * A event sourced actor with simple calculation operations 
@@ -34,6 +35,7 @@ object CalculatorActor:
   case class SubEvent(value: Int) extends Event
 
   given PayloadCodec[Event] = JsonPayloadCodec.create
+  given PayloadCodec[State] = JsonPayloadCodec.create
 
   private def messageHandler(state: State, message: Message, context: ActorContext[State, Message]): IO[EventAction[Event]] = 
     message match
@@ -54,12 +56,16 @@ object CalculatorActor:
       case SubEvent(value) => State(state.value - value)
 
 
-  def spawn(persistenceId: PersistenceId, name: String = "CalculatorActor")(using EventStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
+  def spawn(persistenceId: PersistenceId, 
+            name: String = "CalculatorActor",
+            snapshotPredicate: SnapshotPredicate[State, Event] = SnapshotPredicate.noSnapshots
+           )(using EventStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
     actorSystem.spawn[State, Message, Event](
-      name            = name,
-      persistenceId   = persistenceId, 
-      initialState    = State(),
-      messageHandler  = messageHandler,
-      eventHandler    = eventHandler
+      name              = name,
+      persistenceId     = persistenceId, 
+      initialState      = State(),
+      messageHandler    = messageHandler,
+      eventHandler      = eventHandler,
+      snapshotPredicate = snapshotPredicate
     )
   

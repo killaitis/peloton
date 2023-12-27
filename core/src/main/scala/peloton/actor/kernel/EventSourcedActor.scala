@@ -7,9 +7,12 @@ import peloton.actor.Behavior
 import peloton.actor.EventSourcedBehavior
 import peloton.actor.MessageHandler
 import peloton.actor.EventHandler
+import peloton.actor.SnapshotPredicate
 import peloton.persistence.PersistenceId
 import peloton.persistence.EventStore
 import peloton.persistence.PayloadCodec
+import peloton.persistence.Snapshot
+import peloton.persistence.Event
 
 import cats.effect.*
 import cats.effect.std.Queue
@@ -55,6 +58,10 @@ private [peloton] object EventSourcedActor:
     *   The message handler of type [[MessageHandler]]
     * @param eventHandler
     *   The event handler of type [[EventHandler]]
+    * @param snapshotPredicate
+    *   A function that takes the current state of the actor (after applying the current event), the current event and 
+    *   the number of events that have been processed (icluding the current event) since the last snapshot. The function
+    *   returns a Boolean that indicates if a new snapshot needs to be created.
     * @param codec 
     *   A given instance of [[PayloadCodec]] to convert instances of the actor's event type `E` to a byte array and vice versa
     * @param eventStore 
@@ -65,17 +72,22 @@ private [peloton] object EventSourcedActor:
   def spawn[S, M, E](persistenceId: PersistenceId,
                      initialState: S,
                      messageHandler: MessageHandler[S, M, E],
-                     eventHandler: EventHandler[S, E]
+                     eventHandler: EventHandler[S, E],
+                     snapshotPredicate: SnapshotPredicate[S, E]
                     )(using 
-                     codec: PayloadCodec[E],
-                     eventStore: EventStore
+                     eventStore: EventStore, 
+                     eventCodec: PayloadCodec[E], 
+                     snapshotCodec: PayloadCodec[S]
                     ): IO[Actor[M]] =
     for
       // Wrap the state into a Ref, so both the client (producer) and the message handler loop (consumer) can access it thread-safely.
       stateRef     <- Ref.of[IO, S](initialState)
 
+      // Create an event counter for snapshot handling
+      numEventsRef <- Ref.of[IO, Int](0)
+
       // Create the new hebavior. This will be static for the whole lifetime of the actor and cannot be changed.
-      behavior      = EventSourcedBehavior(persistenceId, messageHandler, eventHandler)
+      behavior      = new EventSourcedBehavior(persistenceId, messageHandler, eventHandler, snapshotPredicate, numEventsRef)
 
       // Create the message queues for both the inbox and the stash. 
       inbox        <- Queue.unbounded[IO, ActorMessage[M]]
@@ -151,12 +163,21 @@ private [peloton] object EventSourcedActor:
       state        <- stateRef.get
       agg          <- queueMutex.lock.surround:
                         eventStore
-                          .readEvents(persistenceId)
-                          .fold(state)((s, event) => eventHandler(s, event.payload))
+                          .readEvents[S, E](persistenceId)
+                          .fold((state, 0))((acc, eventOrSnapshot) => 
+                            eventOrSnapshot match
+                              case snapshot: Snapshot[S] => (snapshot.payload, 0)
+                              case event: Event[E]       => (eventHandler(acc._1, event.payload), acc._2 + 1)
+                          )
                           .compile
                           .toList
-      newState      = agg.head
+
+      (newState, numEvents) = agg.head
+
+      _            <- IO.println(s"starting actor with state=$newState and counter=$numEvents")
+      
       _            <- stateRef.set(newState)
+      _            <- numEventsRef.set(numEvents)
     yield actor
   end spawn
 

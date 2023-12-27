@@ -5,7 +5,6 @@ import peloton.config.Config
 import cats.effect.IO
 import cats.effect.Resource
 import fs2.Stream
-import scala.util.Try
 
 trait EventStore:
 
@@ -55,47 +54,89 @@ trait EventStore:
     *   `IO[Unit]`
     */
   def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit]
-
+  
   /**
-    * Reads all [[Event]]s of type `A` for a given [[PersistenceId]] from the storage backend.
+    * Reads the latest snapshot of payload type `S` (if it exists) and all [[Event]]s of payload 
+    * type `E` (created after the latest snapshot or from the beginning if not) for a given 
+    * [[PersistenceId]] from the storage backend.
     *
+    * @tparam E
+    *   The event's payload type
+    * @tparam S
+    *   The actor's snapshot payload type
     * @param persistenceId
     *   The [[PersistenceId]] of the instance to read
-    * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert events of type `A` to a byte array and vice versa
+    * @param eventCodec 
+    *   a given [[PayloadCodec]] to convert events of payload type `E` to a byte array and vice versa
+    * @param snapshotCodec 
+    *   a given [[PayloadCodec]] to convert snapshots of payload type `S` to a byte array and vice versa
     * @return
-    *   An `fs2.Stream` of [[Event]]
+    *   An `fs2.Stream` of either [[Snapshot]] or [[Event]]
     */
-  def readEvents[A](persistenceId: PersistenceId)(using payloadCodec: PayloadCodec[A]): Stream[IO, Event[A]] = 
+  def readEvents[S, E](persistenceId: PersistenceId
+                      )(using 
+                       eventCodec: PayloadCodec[E],
+                       snapshotCodec: PayloadCodec[S]
+                      ): Stream[IO, Snapshot[S] | Event[E]] = 
     readEncodedEvents(persistenceId)
       .evalMap { encodedEvent => 
-        payloadCodec
-          .decode(encodedEvent.payload)
-          .map(payload => Event(payload     = payload, 
-                                timestamp   = encodedEvent.timestamp
-                               )
-          ) 
+        if encodedEvent.isSnapshot
+        then 
+          snapshotCodec
+            .decode(encodedEvent.payload)
+            .map(payload => Snapshot(payload = payload, timestamp = encodedEvent.timestamp))
+        else 
+          eventCodec
+            .decode(encodedEvent.payload)
+            .map(payload => Event(payload = payload, timestamp = encodedEvent.timestamp))
       }
     
   /**
-    * Writes a new [[Event]] of type `A` into storage backend.
+    * Writes a new [[Event]] of payload type `E` into the storage backend.
     *
+    * @tparam E 
+    *   The event's payload type
     * @param persistenceId
-    *   The [[PersistenceId]] of the durable state instance to write
-    * @param state
-    *   The [[Event]] of type `A`
+    *   The [[PersistenceId]] of the actor to write
+    * @param event
+    *   The [[Event]] of type `E`
     * @param payloadCodec 
-    *   a given [[PayloadCodec]] to convert events of type `A` to a byte array and vice versa
+    *   a given [[PayloadCodec]] to convert events of payload type `A` to a byte array and vice versa
     * @return
     *   An `IO[Unit]`
     */
-  def writeEvent[A](persistenceId: PersistenceId, event: Event[A])(using payloadCodec: PayloadCodec[A]): IO[Unit] = 
+  def writeEvent[E](persistenceId: PersistenceId, event: Event[E])(using payloadCodec: PayloadCodec[E]): IO[Unit] = 
     for
       encodedPayload   <- payloadCodec.encode(event.payload)
       encodedEvent      = EncodedEvent(payload    = encodedPayload,
-                                       timestamp  = event.timestamp
+                                       timestamp  = event.timestamp,
+                                       isSnapshot = false
                                       )
       _                <- writeEncodedEvent(persistenceId, encodedEvent)
+    yield ()
+
+  /**
+    * Writes a [[Snapshot]] of payload type `S` into the storage backend.
+    * 
+    * @tparam S
+    *   The snapshot's payload type
+    * @param persistenceId 
+    *   The [[PersistenceId]] of the actor to write
+    * @param snapshot
+    *   The [[Snapshot]] of type `S`
+    * @param payloadCodec 
+    *   a given [[PayloadCodec]] to convert the snapshot of payload type `S` to a byte array and vice versa
+    * @return
+    *   `IO[Unit]`
+    */
+  def writeSnapshot[S](persistenceId: PersistenceId, snapshot: Snapshot[S])(using payloadCodec: PayloadCodec[S]): IO[Unit] = 
+    for
+      encodedPayload   <- payloadCodec.encode(snapshot.payload)
+      encodedSnapshot   = EncodedEvent(payload    = encodedPayload,
+                                       timestamp  = snapshot.timestamp,
+                                       isSnapshot = true
+                                      )
+      _                <- writeEncodedEvent(persistenceId, encodedSnapshot)
     yield ()
 
 end EventStore
@@ -111,14 +152,8 @@ object EventStore:
   def make(config: Config): IO[Resource[IO, EventStore]] =
     for
       persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
-      driver             <- IO.fromTry(Try {
-                              val classLoader = this.getClass().getClassLoader()
-                              val driverClass = classLoader.loadClass(persistenceConfig.driver)
-                              val ctor        = driverClass.getConstructor()
-                              val driver      = ctor.newInstance().asInstanceOf[Driver]
-                              driver
-                            })
-      eventSore            <- driver.createEventStore(persistenceConfig)
+      driver             <- Driver(persistenceConfig.driver)
+      eventSore          <- driver.createEventStore(persistenceConfig)
     yield eventSore
 
   def use[A](config: Config)(f: EventStore ?=> IO[A]): IO[A] = 

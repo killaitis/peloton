@@ -106,13 +106,15 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
   def spawn[S, M, E](persistenceId: PersistenceId,
                      initialState: S,
                      messageHandler: MessageHandler[S, M, E],
-                     eventHandler: EventHandler[S, E]
+                     eventHandler: EventHandler[S, E],
+                     snapshotPredicate: SnapshotPredicate[S, E]
                     )(using 
-                     PayloadCodec[E],
                      EventStore,
+                     PayloadCodec[E],
+                     PayloadCodec[S],
                      reflect.ClassTag[M]
                     ): IO[ActorRef[M]] =
-    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler), None)
+    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler, snapshotPredicate), None)
 
   /**
     * Spawns an event sourced actor
@@ -121,8 +123,8 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     * @param initialState
     * @param messageHandler
     * @param eventHandler
+    * @param eventStore
     * @param codec
-    * @param store
     * @param name
     * @return
     */
@@ -130,13 +132,15 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                      initialState: S,
                      messageHandler: MessageHandler[S, M, E],
                      eventHandler: EventHandler[S, E],
+                     snapshotPredicate: SnapshotPredicate[S, E],
                      name: String
                     )(using 
-                     PayloadCodec[E],
                      EventStore,
+                     PayloadCodec[E],
+                     PayloadCodec[S],
                      reflect.ClassTag[M]
                     ): IO[ActorRef[M]] =
-    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler), Some(name))
+    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler, snapshotPredicate), Some(name))
 
   /**
     * Obtains the ActorRef for a given actor name
