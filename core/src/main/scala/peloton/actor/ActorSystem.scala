@@ -2,7 +2,6 @@ package peloton.actor
 
 import peloton.actor.Actor.CanAsk
 import peloton.http.ActorSystemServer
-import peloton.actor.kernel.*
 import peloton.utils.*
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
@@ -20,6 +19,7 @@ import com.comcast.ip4s.*
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import java.net.URI
+import internal.{DurableStateActor, StatefulActor, EventSourcedActor}
 
 
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):

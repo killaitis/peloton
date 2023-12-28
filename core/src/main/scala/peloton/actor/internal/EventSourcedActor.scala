@@ -1,4 +1,4 @@
-package peloton.actor.kernel
+package peloton.actor.internal
 
 import peloton.actor.Actor
 import peloton.actor.Actor.*

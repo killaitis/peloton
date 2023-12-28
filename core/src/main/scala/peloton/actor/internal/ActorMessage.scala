@@ -1,4 +1,4 @@
-package peloton.actor.kernel
+package peloton.actor.internal
 
 import cats.effect.Deferred
 import cats.effect.IO
@@ -12,11 +12,11 @@ import cats.effect.IO
   * is finally wrapped into an `Option`. This allows it to skip the whole creation of a
   * `Deferred` when no response is needed (`tell()`) and only allocate it if needed (`ask()`)
   */
-private [kernel] type ActorResponseChannel = Deferred[IO, Either[Throwable, Any]]
+private [internal] type ActorResponseChannel = Deferred[IO, Either[Throwable, Any]]
 
 /**
   * Type of the elements of the internal message queues. Each element consists of a pair of 
   *   - the incoming raw message sent to the actor of type `M`
   *   - an optional response channel the actor can use to send responses back to the caller (ASK pattern)
   */
-private [kernel] type ActorMessage[M] = (M, Option[ActorResponseChannel])
+private [internal] type ActorMessage[M] = (M, Option[ActorResponseChannel])
