@@ -60,8 +60,8 @@ object CalculatorActor:
             name: String = "CalculatorActor",
             snapshotPredicate: SnapshotPredicate[State, Event] = SnapshotPredicate.noSnapshots
            )(using EventStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
-    actorSystem.spawn[State, Message, Event](
-      name              = name,
+    actorSystem.spawnEventSourcedActor[State, Message, Event](
+      name              = Some(name),
       persistenceId     = persistenceId, 
       initialState      = State(),
       messageHandler    = messageHandler,

@@ -43,8 +43,8 @@ object ToggleActor:
       context.reply(GetModeResponse(Mode.ModeB))
 
   def spawn(name: String)(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[Unit, Message](
-      name            = name,
+    actorSystem.spawnActor[Unit, Message](
+      name            = Some(name),
       initialState    = (),
       initialBehavior = behaviorA
     )

@@ -28,8 +28,8 @@ object BarActor:
   given CanAsk[Get, GetResponse] = canAsk
 
   def spawn(name: String, persistenceId: PersistenceId)(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
-    actorSystem.spawn(
-      name            = name,
+    actorSystem.spawnDurableStateActor(
+      name            = Some(name),
       persistenceId   = persistenceId, 
       initialState    = State(), 
       initialBehavior = 

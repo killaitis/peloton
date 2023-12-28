@@ -16,8 +16,8 @@ object CascadingActor:
   given CanAsk[Hello, HelloResponse] = canAsk
 
   def spawn(name: String, delegate: Option[ActorRef[Message]])(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[Unit, Message](
-      name            = name,
+    actorSystem.spawnActor[Unit, Message](
+      name            = Some(name),
       initialState    = (),
       initialBehavior = (_, message, context) => message match
                           case Hello(hello) => 

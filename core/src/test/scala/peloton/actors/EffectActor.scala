@@ -34,8 +34,8 @@ object EffectActor:
   )
 
   def spawn(name: String = "EffectActor", effect: IO[Int])(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[State, Command](
-      name = name,
+    actorSystem.spawnActor[State, Command](
+      name = Some(name),
       initialState = State(),
       initialBehavior = (state, message, context) => message match
         case Run() => 

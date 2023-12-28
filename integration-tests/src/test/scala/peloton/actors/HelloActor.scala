@@ -18,8 +18,8 @@ object HelloActor:
     given CanAsk[HowAreYou.type, HowAreYouResponse] = canAsk
 
   def spawn(name: String)(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[Boolean, Message](
-      name            = name,
+    actorSystem.spawnActor[Boolean, Message](
+      name            = Some(name),
       initialState    = false,
       initialBehavior = (alreadyGreeted, message, context) => message match
                           case Message.Hello(greeting) => 

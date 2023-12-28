@@ -13,6 +13,7 @@ import peloton.persistence.EventStore
 import peloton.persistence.PayloadCodec
 import peloton.persistence.Snapshot
 import peloton.persistence.Event
+import peloton.persistence.Retention
 
 import cats.effect.*
 import cats.effect.std.Queue
@@ -73,7 +74,8 @@ private [peloton] object EventSourcedActor:
                      initialState: S,
                      messageHandler: MessageHandler[S, M, E],
                      eventHandler: EventHandler[S, E],
-                     snapshotPredicate: SnapshotPredicate[S, E]
+                     snapshotPredicate: SnapshotPredicate[S, E],
+                     retention: Retention
                     )(using 
                      eventStore: EventStore, 
                      eventCodec: PayloadCodec[E], 
@@ -87,7 +89,13 @@ private [peloton] object EventSourcedActor:
       numEventsRef <- Ref.of[IO, Int](0)
 
       // Create the new hebavior. This will be static for the whole lifetime of the actor and cannot be changed.
-      behavior      = new EventSourcedBehavior(persistenceId, messageHandler, eventHandler, snapshotPredicate, numEventsRef)
+      behavior      = new EventSourcedBehavior(persistenceId, 
+                                               messageHandler, 
+                                               eventHandler, 
+                                               snapshotPredicate, 
+                                               retention,
+                                               numEventsRef
+                                              )
 
       // Create the message queues for both the inbox and the stash. 
       inbox        <- Queue.unbounded[IO, ActorMessage[M]]
@@ -163,7 +171,9 @@ private [peloton] object EventSourcedActor:
       state        <- stateRef.get
       agg          <- queueMutex.lock.surround:
                         eventStore
-                          .readEvents[S, E](persistenceId)
+                          .readEvents[S, E](persistenceId           = persistenceId, 
+                                            startFromLatestSnapshot = true
+                                           )
                           .fold((state, 0))((acc, eventOrSnapshot) => 
                             eventOrSnapshot match
                               case snapshot: Snapshot[S] => (snapshot.payload, 0)

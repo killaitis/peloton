@@ -23,17 +23,19 @@ class EventStoreMock extends EventStore:
 
   override def clear(): IO[Unit] = IO.pure(encodedEvents.clear())
 
-  override def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] = 
-    val events = encodedEvents.getOrElse(persistenceId, Vector.empty[EncodedEvent])
-    val indexOfLastSnapshot = events.lastIndexWhere(_.isSnapshot)
-    val eventsSinceLastSnapshot = 
-      if indexOfLastSnapshot > 0 
-      then events.drop(indexOfLastSnapshot)
-      else events
-    println(s"### events = $events")
-    println(s"### indexOfLastSnapshot = $indexOfLastSnapshot")
-    println(s"### eventsSinceLastSnapshot = $eventsSinceLastSnapshot")
-    Stream.emits(eventsSinceLastSnapshot)
+  override def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit] = IO.raiseError(new NotImplementedError)
+
+  override def readEncodedEvents(persistenceId: PersistenceId, startFromLatestSnapshot: Boolean): Stream[IO, EncodedEvent] = 
+    if startFromLatestSnapshot then
+      val events = encodedEvents.getOrElse(persistenceId, Vector.empty[EncodedEvent])
+      val indexOfLastSnapshot = events.lastIndexWhere(_.isSnapshot)
+      val eventsSinceLastSnapshot = 
+        if indexOfLastSnapshot > 0 
+        then events.drop(indexOfLastSnapshot)
+        else events
+      Stream.emits(eventsSinceLastSnapshot)
+    else 
+      Stream.emits(encodedEvents.getOrElse(persistenceId, Vector.empty[EncodedEvent]))
 
   override def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit] =
     IO {

@@ -26,7 +26,7 @@ object CollectorActor:
 
   // TODO: this talk about different solutions is basically documentation and as such it should be moved to an example file
 
-  // Solution 1 (preferred): functional
+  // Solution 1: functional
   def handlerFn(words: List[String]): Behavior[State, Message] =
     (state, message, context) => 
       message match
@@ -37,7 +37,7 @@ object CollectorActor:
         case Get() => 
           context.reply(GetResponse(words))
 
-  // Solution 2: with a modifiable state
+  // Solution 2: with a mutable state
   val handler: Behavior[State, Message] =
     (state, message, context) => message match
       case Add(word) => 
@@ -48,8 +48,8 @@ object CollectorActor:
         context.reply(GetResponse(state.words))
 
   def spawn(name: String = "CollectorActor")(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[State, Message](
-      name = name,
-      initialState = State(),
+    actorSystem.spawnActor[State, Message](
+      name            = Some(name),
+      initialState    = State(),
       initialBehavior = handlerFn(words = Nil)
     )

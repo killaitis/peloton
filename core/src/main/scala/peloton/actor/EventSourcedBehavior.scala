@@ -4,6 +4,7 @@ import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.Event
 import peloton.persistence.EventStore
+import peloton.persistence.Retention
 import peloton.actor.MessageHandler
 import peloton.actor.EventHandler
 
@@ -22,13 +23,14 @@ type SnapshotPredicate[S, E] = (state: S, event: E, numEvents: Int) => Boolean
 
 object SnapshotPredicate:
   def noSnapshots[S, E]: SnapshotPredicate[S, E] = (_, _, _) => false
-  def each[S, E](n: Int): SnapshotPredicate[S, E] = (_, _, count) => count % n == 0
+  def snapshotEvery[S, E](n: Int): SnapshotPredicate[S, E] = (_, _, count) => count % n == 0
 
 private [peloton] class EventSourcedBehavior[S, M, E](
           persistenceId: PersistenceId,
           messageHandler: MessageHandler[S, M, E],
           eventHandler: EventHandler[S, E],
           snapshotPredicate: SnapshotPredicate[S, E],
+          retention: Retention,
           eventCounterRef: Ref[IO, Int]
         )(using 
           eventStore: EventStore,
@@ -68,7 +70,8 @@ private [peloton] class EventSourcedBehavior[S, M, E](
                                                                          timestamp = now.toEpochMilli
                                                                         )
                                                     _        <- eventStore.writeSnapshot(persistenceId = persistenceId, 
-                                                                                         snapshot      = snapshot
+                                                                                         snapshot      = snapshot,
+                                                                                         retention     = retention
                                                                                         )
                                                   yield 0
                                                 else 

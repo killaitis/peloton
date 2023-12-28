@@ -38,10 +38,13 @@ trait EventStore:
     *
     * @param persistenceId 
     *   The [[PersistenceId]] to read
+    * @param startFromLatestSnapshot
+    *   If set to `true`, the function will skip all events inserted before the latest snapshot. 
+    *   If no snapshot has been created for the given `persistenceId`, all events will be returned.
     * @return
     *   An `fs2.Stream` of [[EncodedEvent]]
     */
-  def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent]
+  def readEncodedEvents(persistenceId: PersistenceId, startFromLatestSnapshot: Boolean): Stream[IO, EncodedEvent]
 
   /**
     * Writes an encoded (serialized) event for a given `persistenceId` into the storage backend.
@@ -56,6 +59,21 @@ trait EventStore:
   def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit]
   
   /**
+    * Purges the event store by cleaning up events and snapshots.
+    * 
+    * Keeps the latest `snapshotsToKeep` snapshots and deletes all events and snapshots 
+    * that were created prior to these snapshots.
+    *
+    * @param persistenceId
+    *   The [[PersistenceId]] of the actor instance to purge
+    * @param snapshotsToKeep
+    *   The number of most recent snapshots to keep
+    * @return
+    *   An `IO[Unit]`
+    */
+  def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit]
+
+  /**
     * Reads the latest snapshot of payload type `S` (if it exists) and all [[Event]]s of payload 
     * type `E` (created after the latest snapshot or from the beginning if not) for a given 
     * [[PersistenceId]] from the storage backend.
@@ -65,7 +83,10 @@ trait EventStore:
     * @tparam S
     *   The actor's snapshot payload type
     * @param persistenceId
-    *   The [[PersistenceId]] of the instance to read
+    *   The [[PersistenceId]] of the actor instance to read
+    * @param startFromLatestSnapshot
+    *   If set to `true`, the function will skip all events inserted before the latest snapshot. 
+    *   If no snapshot has been created for the given `persistenceId`, all events will be returned.
     * @param eventCodec 
     *   a given [[PayloadCodec]] to convert events of payload type `E` to a byte array and vice versa
     * @param snapshotCodec 
@@ -73,12 +94,13 @@ trait EventStore:
     * @return
     *   An `fs2.Stream` of either [[Snapshot]] or [[Event]]
     */
-  def readEvents[S, E](persistenceId: PersistenceId
+  def readEvents[S, E](persistenceId: PersistenceId,
+                       startFromLatestSnapshot: Boolean
                       )(using 
                        eventCodec: PayloadCodec[E],
                        snapshotCodec: PayloadCodec[S]
                       ): Stream[IO, Snapshot[S] | Event[E]] = 
-    readEncodedEvents(persistenceId)
+    readEncodedEvents(persistenceId, startFromLatestSnapshot)
       .evalMap { encodedEvent => 
         if encodedEvent.isSnapshot
         then 
@@ -124,12 +146,17 @@ trait EventStore:
     *   The [[PersistenceId]] of the actor to write
     * @param snapshot
     *   The [[Snapshot]] of type `S`
+    * @param retention
+    *   The [[Retention]] parameters for optional purging
     * @param payloadCodec 
     *   a given [[PayloadCodec]] to convert the snapshot of payload type `S` to a byte array and vice versa
     * @return
     *   `IO[Unit]`
     */
-  def writeSnapshot[S](persistenceId: PersistenceId, snapshot: Snapshot[S])(using payloadCodec: PayloadCodec[S]): IO[Unit] = 
+  def writeSnapshot[S](persistenceId: PersistenceId, 
+                       snapshot: Snapshot[S],
+                       retention: Retention
+                      )(using payloadCodec: PayloadCodec[S]): IO[Unit] = 
     for
       encodedPayload   <- payloadCodec.encode(snapshot.payload)
       encodedSnapshot   = EncodedEvent(payload    = encodedPayload,
@@ -137,6 +164,9 @@ trait EventStore:
                                        isSnapshot = true
                                       )
       _                <- writeEncodedEvent(persistenceId, encodedSnapshot)
+      _                <- if retention.purgeOnSnapshot 
+                          then purge(persistenceId, retention.snapshotsToKeep) 
+                          else IO.unit
     yield ()
 
 end EventStore

@@ -58,7 +58,7 @@ object DurableStateCollectorActor:
     // - A PersistenceId can be constructed from any non-empty String. 
     // - The system does not check if the PersistenceId of your actor is used
     //   multiple times. You have to ensure this on your own.
-    actorSystem.spawn[State, Message](
+    actorSystem.spawnDurableStateActor[State, Message](
       persistenceId   = PersistenceId.of("word-collector-actor"),
       initialState    = State(),
       initialBehavior = behavior

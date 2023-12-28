@@ -24,8 +24,8 @@ object CounterActor:
       case Get => context.reply(counter)
 
   def spawn(using actorSystem: ActorSystem) = 
-    actorSystem.spawn[Int, Message](
-      name            = "Counter Actor",
+    actorSystem.spawnActor[Int, Message](
+      name            = Some("Counter Actor"),
       initialState    = 0,
       initialBehavior = behavior
     )

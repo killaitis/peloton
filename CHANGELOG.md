@@ -1,10 +1,18 @@
 # Changelog
 
+## v0.4.0
+- Added support for event and snapshot retention for event sourced actors. 
+- *API CHANGE*: The various versions of `ActorSystem.spawn` have been split to allow for default parameters. The new methods
+  also are more precise in their name about what they are actually doing:
+  + `spawnActor`
+  + `spawnDurableStateActor`
+  + `spawnEventSourcedActor`
+
 ## v0.3.0
 - Introduced event sourced actors.
 - Introduced CRON-based scheduling for Cats Effect.
 - Improved store factory for better handling of `DurableStateStore` and `EventStore`.
-- *API change*: `ActorContext.respond` has been renamed to `ActorContext.reply`.
+- *API CHANGE*: `ActorContext.respond` has been renamed to `ActorContext.reply`.
 
 ## v0.2.1
 - Dependency updates 

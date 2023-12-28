@@ -55,8 +55,8 @@ object CountingActor:
   def spawn(persistenceId: PersistenceId, name: String = "CountingActor")(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Command]] =
     for
       npStateRef   <- Ref.of[IO, NPState](NPState())
-      actor        <- actorSystem.spawn[State, Command](
-                        name            = name,
+      actor        <- actorSystem.spawnDurableStateActor[State, Command](
+                        name            = Some(name),
                         persistenceId   = persistenceId, 
                         initialState    = State(), 
                         initialBehavior = 

@@ -78,7 +78,9 @@ class EventSourcedActorSpec
       for
         _      <- eventStore.clear()
 
-        actor  <- CalculatorActor.spawn(persistenceId, snapshotPredicate = SnapshotPredicate.each(3))
+        actor  <- CalculatorActor.spawn(persistenceId     = persistenceId, 
+                                        snapshotPredicate = SnapshotPredicate.snapshotEvery(3)
+                                       )
         _      <- actor ! CalculatorActor.Add(23)
         _      <- actor ! CalculatorActor.Add(11)
         _      <- actor ! CalculatorActor.Sub(5) // <- snapshot: 23+11-5 = 29
@@ -105,7 +107,7 @@ object EventSourcedActorSpec:
 
   private def readEvents(using eventStore: EventStore) = 
     eventStore
-      .readEvents[CalculatorActor.State, CalculatorActor.Event](persistenceId)
+      .readEvents[CalculatorActor.State, CalculatorActor.Event](persistenceId, startFromLatestSnapshot = true)
       .compile
       .toList
       .map(_.map {

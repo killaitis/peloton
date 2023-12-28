@@ -10,6 +10,7 @@ import peloton.persistence.JsonPayloadCodec
 
 import cats.effect.{IO, IOApp}
 import peloton.actor.SnapshotPredicate
+import peloton.persistence.Retention
 
 
 // An actor that tracks body energy. Eating or drinking increases the 
@@ -144,12 +145,16 @@ object EnergyTrackerActor:
   // - An ActorSytem
   // - An EventStore
   def spawn()(using actorSystem: ActorSystem)(using EventStore) = 
-    actorSystem.spawn[State, Message, Event](
+    actorSystem.spawnEventSourcedActor[State, Message, Event](
       persistenceId     = PersistenceId.of("energy-tracker-actor"), 
       initialState      = State(),
       messageHandler    = messageHandler,
       eventHandler      = eventHandler,
-      snapshotPredicate = SnapshotPredicate.noSnapshots
+      snapshotPredicate = SnapshotPredicate.snapshotEvery(10),  // optional
+      retention         = Retention(                            // optional
+                            purgeOnSnapshot = true,
+                            snapshotsToKeep = 1
+                          )
     )
 
 end EnergyTrackerActor

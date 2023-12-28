@@ -7,6 +7,7 @@ import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.DurableStateStore
 import peloton.persistence.EventStore
+import peloton.persistence.Retention
 import peloton.config.Config
 import peloton.http.RemoteActorRef
 
@@ -29,46 +30,16 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     *
     * @param initialState
     * @param initialBehavior
-    * @return
-    */
-  def spawn[S, M](initialState: S,
-                  initialBehavior: Behavior[S, M],
-                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
-    register(StatefulActor.spawn[S, M](initialState, initialBehavior))
-
-  /**
-    * Spawns a stateful actor
-    *
-    * @param initialState
-    * @param initialBehavior
     * @param name
     * @return
     */
-  def spawn[S, M](initialState: S,
+  def spawnActor[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
-                  name: String
+                  name: Option[String] = None
                  )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
-    register(StatefulActor.spawn[S, M](initialState, initialBehavior), Some(name))
-
-  /**
-    * Spawns a durable state actor
-    *
-    * @param persistenceId
-    * @param initialState
-    * @param initialBehavior
-    * @param codec
-    * @param store
-    * @return
-    */
-  def spawn[S, M](persistenceId: PersistenceId,
-                  initialState: S,
-                  initialBehavior: Behavior[S, M]
-                 )(using 
-                  PayloadCodec[S],
-                  DurableStateStore,
-                  reflect.ClassTag[M]
-                 ): IO[ActorRef[M]] =
-    register(DurableStateActor.spawn[S, M](persistenceId, initialState, initialBehavior))
+    register(StatefulActor.spawn[S, M](initialState, initialBehavior), 
+             name
+            )
 
   /**
     * Spawns a durable state actor
@@ -81,16 +52,21 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     * @param store
     * @return
     */
-  def spawn[S, M](persistenceId: PersistenceId,
-                  initialState: S,
-                  initialBehavior: Behavior[S, M],
-                  name: String
-                 )(using 
-                  PayloadCodec[S],
-                  DurableStateStore,
-                  reflect.ClassTag[M]
-                 ): IO[ActorRef[M]] =
-    register(DurableStateActor.spawn[S, M](persistenceId, initialState, initialBehavior), Some(name))
+  def spawnDurableStateActor[S, M](persistenceId: PersistenceId,
+                                   initialState: S,
+                                   initialBehavior: Behavior[S, M],
+                                   name: Option[String] = None
+                                  )(using 
+                                   PayloadCodec[S],
+                                   DurableStateStore,
+                                   reflect.ClassTag[M]
+                                  ): IO[ActorRef[M]] =
+    register(DurableStateActor.spawn[S, M](persistenceId, 
+                                           initialState, 
+                                           initialBehavior
+                                          ), 
+             name
+            )
 
   /**
     * Spawns an event sourced actor
@@ -99,48 +75,35 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     * @param initialState
     * @param messageHandler
     * @param eventHandler
-    * @param codec
-    * @param store
-    * @return
-    */
-  def spawn[S, M, E](persistenceId: PersistenceId,
-                     initialState: S,
-                     messageHandler: MessageHandler[S, M, E],
-                     eventHandler: EventHandler[S, E],
-                     snapshotPredicate: SnapshotPredicate[S, E]
-                    )(using 
-                     EventStore,
-                     PayloadCodec[E],
-                     PayloadCodec[S],
-                     reflect.ClassTag[M]
-                    ): IO[ActorRef[M]] =
-    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler, snapshotPredicate), None)
-
-  /**
-    * Spawns an event sourced actor
-    *
-    * @param persistenceId
-    * @param initialState
-    * @param messageHandler
-    * @param eventHandler
+    * @param snapshotPredicate
+    * @param retention
+    * @param name
     * @param eventStore
     * @param codec
-    * @param name
     * @return
     */
-  def spawn[S, M, E](persistenceId: PersistenceId,
-                     initialState: S,
-                     messageHandler: MessageHandler[S, M, E],
-                     eventHandler: EventHandler[S, E],
-                     snapshotPredicate: SnapshotPredicate[S, E],
-                     name: String
-                    )(using 
-                     EventStore,
-                     PayloadCodec[E],
-                     PayloadCodec[S],
-                     reflect.ClassTag[M]
-                    ): IO[ActorRef[M]] =
-    register(EventSourcedActor.spawn[S, M, E](persistenceId, initialState, messageHandler, eventHandler, snapshotPredicate), Some(name))
+  def spawnEventSourcedActor[S, M, E](persistenceId: PersistenceId,
+                                      initialState: S,
+                                      messageHandler: MessageHandler[S, M, E],
+                                      eventHandler: EventHandler[S, E],
+                                      snapshotPredicate: SnapshotPredicate[S, E] = SnapshotPredicate.noSnapshots,
+                                      retention: Retention = Retention(),
+                                      name: Option[String] = None
+                                     )(using 
+                                      EventStore,
+                                      PayloadCodec[E],
+                                      PayloadCodec[S],
+                                      reflect.ClassTag[M]
+                                     ): IO[ActorRef[M]] =
+    register(EventSourcedActor.spawn[S, M, E](persistenceId, 
+                                              initialState, 
+                                              messageHandler, 
+                                              eventHandler, 
+                                              snapshotPredicate,
+                                              retention
+                                             ), 
+             name
+            )
 
   /**
     * Obtains the ActorRef for a given actor name

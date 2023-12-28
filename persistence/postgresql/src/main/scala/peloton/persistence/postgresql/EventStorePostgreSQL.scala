@@ -47,23 +47,36 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
     sql"truncate table peloton.event_store"
       .update.run.transact(xa).void
 
-  override def readEncodedEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] =
-    sql"""
-      select
-        payload, 
-        timestamp,
-        is_snapshot
-      from peloton.event_store 
-      where 
-            persistence_id = ${persistenceId.toString()} 
-        and sequence_id >= (select coalesce(max(sequence_id), 0)
-                            from peloton.event_store 
-                            where 
-                              persistence_id = ${persistenceId.toString()} 
-                              and is_snapshot = true
-                           ) 
-      order by sequence_id
-    """.query[EncodedEvent].stream.transact(xa)
+  override def readEncodedEvents(persistenceId: PersistenceId, 
+                                 startFromLatestSnapshot: Boolean
+                                ): Stream[IO, EncodedEvent] =
+    if startFromLatestSnapshot then 
+      sql"""
+        select
+          payload, 
+          timestamp,
+          is_snapshot
+        from peloton.event_store 
+        where 
+              persistence_id = ${persistenceId.toString()} 
+          and sequence_id >= (select coalesce(max(sequence_id), 0)
+                              from peloton.event_store 
+                              where 
+                                persistence_id = ${persistenceId.toString()} 
+                                and is_snapshot = true
+                            ) 
+        order by sequence_id
+      """.query[EncodedEvent].stream.transact(xa)
+    else 
+      sql"""
+        select
+          payload, 
+          timestamp,
+          is_snapshot
+        from peloton.event_store 
+        where persistence_id = ${persistenceId.toString()} 
+        order by sequence_id
+      """.query[EncodedEvent].stream.transact(xa)
 
   override def writeEncodedEvent(persistenceId: PersistenceId, encodedEvent: EncodedEvent): IO[Unit] =
     sql"""
@@ -78,6 +91,24 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
         ${encodedEvent.payload},
         ${encodedEvent.isSnapshot}
       )
+    """.update.run.transact(xa).void
+
+  override def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit] = 
+    sql"""
+      delete from peloton.event_store 
+      where 
+            persistence_id = ${persistenceId.toString()} 
+        and sequence_id < ( select min(sequence_id) 
+                            from 
+                              ( select sequence_id 
+                                from peloton.event_store 
+                                where 
+                                      persistence_id = ${persistenceId.toString()} 
+                                  and is_snapshot 
+                                order by sequence_id desc
+                                limit ${snapshotsToKeep}
+                              ) as A
+                          )
     """.update.run.transact(xa).void
 
 end EventStorePostgreSQL
