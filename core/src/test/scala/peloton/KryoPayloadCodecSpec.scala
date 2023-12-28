@@ -7,17 +7,14 @@ import org.scalatest.matchers.should.Matchers
 
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import io.circe.*
-import io.circe.generic.semiauto.*
-
-class JsonPayloadCodecSpec
+class KryoPayloadCodecSpec 
     extends AsyncFlatSpec 
       with AsyncIOSpec 
       with Matchers:
 
-  behavior of "A JsonPayloadCodec"
+  behavior of "A KryoPayloadCodec"
   
-  import JsonPayloadCodecSpec.*
+  import KryoPayloadCodecSpec.*
 
   it should "encode instances of a given type" in:
     val payload = MyData(i = 13, 
@@ -28,8 +25,7 @@ class JsonPayloadCodecSpec
                         )
     payloadCodec
       .encode(payload)
-      .asserting: encodedPayload => 
-        String(encodedPayload) shouldBe """{"i":13,"s":"gee","b":true,"l":["foo","bar"],"o":4711}"""
+      .assertNoException
 
   it should "encode instances of a given type with missing optional fields" in:
     val payload = MyData(i = 33, 
@@ -40,8 +36,7 @@ class JsonPayloadCodecSpec
                         )
     payloadCodec
       .encode(payload)
-      .asserting: encodedPayload => 
-        String(encodedPayload) shouldBe """{"i":33,"s":"Scala","b":false,"l":[]}"""
+      .assertNoException
 
   it should "decode a byte array to an instance of a given type" in:
     val payload = MyData(i = 5, 
@@ -57,10 +52,9 @@ class JsonPayloadCodecSpec
 
     decodedPayload.asserting(_ shouldBe payload)
 
-end JsonPayloadCodecSpec
+end KryoPayloadCodecSpec
 
-
-object JsonPayloadCodecSpec:
+object KryoPayloadCodecSpec:
   final case class MyData(i: Int, 
                           s: String, 
                           b: Boolean, 
@@ -68,6 +62,6 @@ object JsonPayloadCodecSpec:
                           o: Option[Long]
                         )
 
-  val payloadCodec: PayloadCodec[MyData] = persistence.JsonPayloadCodec.create
+  val payloadCodec: PayloadCodec[MyData] = persistence.KryoPayloadCodec.create
 
-end JsonPayloadCodecSpec
+end KryoPayloadCodecSpec

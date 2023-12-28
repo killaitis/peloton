@@ -2,6 +2,7 @@
 
 ## v0.4.0
 - Added support for event and snapshot retention for event sourced actors. 
+- Added `KryoPayloadCodec` as a faster alternative to the standard `JsonPayloadCodec` for the durable state and event store.
 - *API CHANGE*: The various versions of `ActorSystem.spawn` have been split to allow for default parameters. The new methods
   also are more precise in their name about what they are actually doing:
   + `spawnActor`

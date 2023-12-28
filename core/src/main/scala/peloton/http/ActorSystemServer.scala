@@ -5,6 +5,7 @@ import peloton.actor.Actor.CanAsk
 import peloton.actor.Actor.canAsk
 import peloton.http.Codecs.given
 import peloton.actor.ActorRef
+import peloton.utils.Kryo
 
 import cats.effect.IO
 import cats.effect.Resource
@@ -21,8 +22,6 @@ import io.circe.generic.auto.*
 import io.circe.Decoder
 import io.circe.Encoder
 
-import com.typesafe.config.ConfigFactory
-import io.altoo.serialization.kryo.scala.ScalaKryoSerializer
 import com.comcast.ip4s.{Hostname, Port}
 
 import scala.concurrent.duration.*
@@ -89,20 +88,18 @@ object ActorSystemServer:
       .build
   end apply
 
-  private lazy val config = ConfigFactory.defaultApplication.withFallback(ConfigFactory.defaultReference)
-  private lazy val serializer = ScalaKryoSerializer(config, getClass.getClassLoader)
   private lazy val encoder = Base64.getEncoder
   private lazy val decoder = Base64.getDecoder
 
   private [peloton] def deserializePayload(payload: String): IO[Any] = 
     for
       decoded      <- IO.fromTry(Try(decoder.decode(payload)))
-      message      <- IO.fromTry(serializer.deserialize[Any](decoded))
+      message      <- IO.fromTry(Kryo.serializer.deserialize[Any](decoded))
     yield message
 
   private [peloton] def serializePayload(payload: Any): IO[String] =
     for
-      buffer  <- IO.fromTry(serializer.serialize(payload))
+      buffer  <- IO.fromTry(Kryo.serializer.serialize(payload))
       encoded <- IO.fromTry(Try(encoder.encodeToString(buffer)))
     yield encoded
 
