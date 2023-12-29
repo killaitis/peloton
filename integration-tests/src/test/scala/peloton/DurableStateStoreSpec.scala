@@ -11,8 +11,6 @@ import peloton.DurableStateStoreSpec.given
 import peloton.config.Config
 
 import cats.effect.testing.scalatest.AsyncIOSpec
-import io.circe.*
-import io.circe.generic.semiauto.*
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -139,6 +137,6 @@ end DurableStateStoreSpec
 object DurableStateStoreSpec:
   final case class MyData(i: Int, s: String)
 
-  given PayloadCodec[MyData] = persistence.JsonPayloadCodec.create
+  given PayloadCodec[MyData] = persistence.KryoPayloadCodec.create
 
   val persistenceId = PersistenceId.of("myitem")

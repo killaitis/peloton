@@ -17,6 +17,11 @@ enum EventAction[+E]:
   case Ignore
   case Persist(event: E)
 
+object EventAction:
+  def ignore[E]: IO[EventAction[E]] = IO.pure(EventAction.Ignore)
+  def persist[E](event: E): IO[EventAction[E]] = IO.pure(EventAction.Persist(event))
+
+
 type MessageHandler[S, M, E] = (state: S, message: M, context: ActorContext[S, M]) => IO[EventAction[E]]
 type EventHandler[S, E] = (state: S, event: E) => S
 type SnapshotPredicate[S, E] = (state: S, event: E, numEvents: Int) => Boolean

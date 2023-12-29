@@ -6,11 +6,12 @@ import cats.effect.Ref
 import peloton.actor.Actor
 import peloton.actor.ActorRef
 import peloton.actor.Actor.*
+import peloton.actor.ActorSystem
 import peloton.persistence.PersistenceId
 import peloton.persistence.DurableStateStore
 import peloton.persistence.PayloadCodec
-import peloton.actor.ActorSystem
-import peloton.persistence.JsonPayloadCodec
+import peloton.persistence.KryoPayloadCodec
+import peloton.actor.Behavior
 
 /**
   * A simple actor that 
@@ -23,69 +24,72 @@ import peloton.persistence.JsonPayloadCodec
   */
 object CountingActor:
 
-  sealed trait Command
-
-  case object Open extends Command
-  case object OpenResponse
-  given CanAsk[Open.type, OpenResponse.type]  = canAsk
-  
-  case object Close extends Command
-  case object CloseResponse
-  given CanAsk[Close.type, CloseResponse.type] = canAsk
-  
-  case object Inc extends Command
-  
-  case object GetState extends Command
-  case class GetStateResponse(isOpen: Boolean, counter: Int)
-  given CanAsk[GetState.type, GetStateResponse] = canAsk
-  
-  case object Fail extends Command
-  case class FailResponse()
-  given CanAsk[Fail.type, FailResponse] = canAsk
-
-  case object CountingException extends Exception
-
   // The persistent state
   case class State(counter: Int = 0)
-  given PayloadCodec[State] = JsonPayloadCodec.create
+  given PayloadCodec[State] = KryoPayloadCodec.create
 
   // The non-persistent state
   case class NPState(isOpen: Boolean = false)
 
-  def spawn(persistenceId: PersistenceId, name: String = "CountingActor")(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Command]] =
+  // Commands (messages) and responses
+  sealed trait Command
+  object Command:
+    case object Open extends Command
+    case object Close extends Command
+    case object Inc extends Command
+    case object GetState extends Command
+    case object Fail extends Command
+
+  object Response:
+    case object OpenResponse
+    case object CloseResponse
+    final case class GetStateResponse(isOpen: Boolean, counter: Int)
+    final case class FailResponse()
+
+  given CanAsk[Command.Open.type,     Response.OpenResponse.type]   = canAsk
+  given CanAsk[Command.Close.type,    Response.CloseResponse.type]  = canAsk
+  given CanAsk[Command.GetState.type, Response.GetStateResponse]    = canAsk
+  given CanAsk[Command.Fail.type,     Response.FailResponse]        = canAsk
+
+  case object CountingException extends Exception
+
+  def spawn
+        (persistenceId: PersistenceId, name: String = "CountingActor")
+        (using DurableStateStore)
+        (using actorSystem: ActorSystem): IO[ActorRef[Command]] =
     for
       npStateRef   <- Ref.of[IO, NPState](NPState())
       actor        <- actorSystem.spawnDurableStateActor[State, Command](
                         name            = Some(name),
                         persistenceId   = persistenceId, 
                         initialState    = State(), 
-                        initialBehavior = 
-                          (state, message, context) => 
-                            message match
-                              case Open => 
-                                npStateRef.set(NPState(isOpen = true)) >>
-                                context.reply(OpenResponse) >> 
-                                context.unstashAll()
+                        initialBehavior = (state, message, context) => 
+                          message match
+                            case Command.Open => 
+                              npStateRef.set(NPState(isOpen = true)) >>
+                              context.reply(Response.OpenResponse) >> 
+                              context.unstashAll()
 
-                              case Close => 
-                                npStateRef.set(NPState(isOpen = false)) >>
-                                context.reply(CloseResponse)
+                            case Command.Close => 
+                              npStateRef.set(NPState(isOpen = false)) >>
+                              context.reply(Response.CloseResponse)
 
-                              case Inc =>
-                                for
-                                  npState  <- npStateRef.get
-                                  _        <- if npState.isOpen then context.setState(State(counter = state.counter + 1))
-                                              else context.stash()
-                                yield context.currentBehavior
+                            case Command.Inc =>
+                              for
+                                npState  <- npStateRef.get
+                                _        <- if npState.isOpen 
+                                            then context.setState(State(counter = state.counter + 1))
+                                            else context.stash()
+                              yield context.currentBehavior
 
-                              case GetState =>
-                                for
-                                  npState  <- npStateRef.get
-                                  _        <- context.reply(GetStateResponse(isOpen = npState.isOpen, counter = state.counter))
-                                yield context.currentBehavior
+                            case Command.GetState =>
+                              for
+                                npState  <- npStateRef.get
+                                _        <- context.reply(Response.GetStateResponse(isOpen = npState.isOpen, counter = state.counter))
+                              yield context.currentBehavior
 
-                              case Fail => 
-                                IO.raiseError(CountingException)
+                            case Command.Fail => 
+                              IO.raiseError(CountingException)
                       )
     yield actor
   

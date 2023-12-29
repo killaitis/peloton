@@ -6,7 +6,7 @@ import peloton.actor.EventAction
 import peloton.persistence.EventStore
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
-import peloton.persistence.JsonPayloadCodec
+import peloton.persistence.KryoPayloadCodec
 
 import cats.effect.{IO, IOApp}
 import peloton.actor.SnapshotPredicate
@@ -56,25 +56,27 @@ object EnergyTrackerActor:
   // interact with the actor
   sealed trait Message
 
-  final case class EatPizza(count: Int) extends Message
-  final case class DrinkJuice(count: Int) extends Message
-  final case class GoHiking(hours: Double) extends Message
-  final case class DoWorkout(hours: Double) extends Message
-  case object GetEnergy extends Message
+  object Message:
+    final case class EatPizza(count: Int) extends Message
+    final case class DrinkJuice(count: Int) extends Message
+    final case class GoHiking(hours: Double) extends Message
+    final case class DoWorkout(hours: Double) extends Message
+    case object GetEnergy extends Message
 
-  // The actor will respond with a message on all commands, containing 
+  // The actor will reply with a message on all commands, containing 
   // the amout of energy that was added or substracted or the total amout 
   // of energy.
-  final case class EnergyAddedResponse(energy: Double)
-  final case class EnergyUsedResponse(energy: Double)
-  final case class EnergyResponse(energy: Double)
+  object Response:
+    final case class EnergyAddedResponse(energy: Double)
+    final case class EnergyUsedResponse(energy: Double)
+    final case class EnergyResponse(energy: Double)
 
   // Define the ASK patterns.
-  given CanAsk[EatPizza, EnergyAddedResponse]    = canAsk
-  given CanAsk[DrinkJuice, EnergyAddedResponse]  = canAsk
-  given CanAsk[GoHiking, EnergyUsedResponse]     = canAsk
-  given CanAsk[DoWorkout, EnergyUsedResponse]    = canAsk
-  given CanAsk[GetEnergy.type, EnergyResponse]   = canAsk
+  given CanAsk[Message.EatPizza,        Response.EnergyAddedResponse] = canAsk
+  given CanAsk[Message.DrinkJuice,      Response.EnergyAddedResponse] = canAsk
+  given CanAsk[Message.GoHiking,        Response.EnergyUsedResponse]  = canAsk
+  given CanAsk[Message.DoWorkout,       Response.EnergyUsedResponse]  = canAsk
+  given CanAsk[Message.GetEnergy.type,  Response.EnergyResponse]      = canAsk
 
   // --- EVENTS ----------------------------------------------------------------
 
@@ -83,17 +85,17 @@ object EnergyTrackerActor:
   // For demonstration purposes, we will use two events to simply add or use 
   // energy.
   sealed trait Event
-  
-  final case class AddEnergy(amout: Double) extends Event
-  final case class UseEnergy(amout: Double) extends Event
+  object Event:
+    final case class AddEnergy(amout: Double) extends Event
+    final case class UseEnergy(amout: Double) extends Event
   
   // The event store needs a given instance of a PayloadCodec for our events
   // to (de)serialize them when reading from and writing to the event store.
-  private given PayloadCodec[Event] = JsonPayloadCodec.create
+  private given PayloadCodec[Event] = KryoPayloadCodec.create
 
   // The event store also needs a given instance of a PayloadCodec for our state
   // to (de)serialize it when creating or reading snapshots.
-  private given PayloadCodec[State] = JsonPayloadCodec.create
+  private given PayloadCodec[State] = KryoPayloadCodec.create
 
   // --- MESSAGE HANDLER -------------------------------------------------------
 
@@ -103,33 +105,32 @@ object EnergyTrackerActor:
 
   private def messageHandler(state: State, message: Message, context: ActorContext[State, Message]): IO[EventAction[Event]] =
     message match
-      case EatPizza(count) =>
+      case Message.EatPizza(count) =>
         for 
           energy <- IO.pure(3.6 * count)
-          _      <- context.reply(EnergyAddedResponse(energy))
-        yield EventAction.Persist(AddEnergy(energy))
+          _      <- context.reply(Response.EnergyAddedResponse(energy))
+        yield EventAction.Persist(Event.AddEnergy(energy))
 
-      case DrinkJuice(count) =>
+      case Message.DrinkJuice(count) =>
         for 
           energy <- IO.pure(1.1 * count)
-          _      <- context.reply(EnergyAddedResponse(energy))
-        yield EventAction.Persist(AddEnergy(energy))
+          _      <- context.reply(Response.EnergyAddedResponse(energy))
+        yield EventAction.Persist(Event.AddEnergy(energy))
 
-      case GoHiking(hours) =>
+      case Message.GoHiking(hours) =>
         for 
           energy <- IO.pure(4.3 * hours)
-          _      <- context.reply(EnergyUsedResponse(energy))
-        yield EventAction.Persist(UseEnergy(energy))
+          _      <- context.reply(Response.EnergyUsedResponse(energy))
+        yield EventAction.Persist(Event.UseEnergy(energy))
 
-      case DoWorkout(hours) =>
+      case Message.DoWorkout(hours) =>
         for 
           energy <- IO.pure(3.2 * hours)
-          _      <- context.reply(EnergyUsedResponse(energy))
-        yield EventAction.Persist(UseEnergy(energy))
+          _      <- context.reply(Response.EnergyUsedResponse(energy))
+        yield EventAction.Persist(Event.UseEnergy(energy))
 
-      case GetEnergy =>
-        context.reply(EnergyResponse(state.energy)) >> IO.pure(EventAction.Ignore)
-
+      case Message.GetEnergy =>
+        context.reply(Response.EnergyResponse(state.energy)) >> EventAction.ignore
   end messageHandler
 
   // --- EVENT HANDLER ---------------------------------------------------------
@@ -138,8 +139,8 @@ object EnergyTrackerActor:
 
   private def eventHandler(state: State, event: Event): State = 
     event match
-      case AddEnergy(energy) => State(state.energy + energy)
-      case UseEnergy(energy) => State(state.energy - energy)
+      case Event.AddEnergy(energy) => State(state.energy + energy)
+      case Event.UseEnergy(energy) => State(state.energy - energy)
 
   // The factory method for our actor. It requres the existence of both
   // - An ActorSytem
@@ -174,10 +175,10 @@ object EventSourcedExample extends IOApp.Simple:
                     // Spawn the tracker actor and send some messages
           actor  <- EnergyTrackerActor.spawn()
 
-          pizza  <- actor ? EnergyTrackerActor.EatPizza(1)
-          juice  <- actor ? EnergyTrackerActor.DrinkJuice(2)
-          juice  <- actor ? EnergyTrackerActor.DoWorkout(0.5)
-          energy <- actor ? EnergyTrackerActor.GetEnergy
+          pizza  <- actor ? EnergyTrackerActor.Message.EatPizza(1)
+          juice  <- actor ? EnergyTrackerActor.Message.DrinkJuice(2)
+          juice  <- actor ? EnergyTrackerActor.Message.DoWorkout(0.5)
+          energy <- actor ? EnergyTrackerActor.Message.GetEnergy
           _      <- IO.println(s"The tracker initially reports $energy energy.")
 
                     // At this point in time, all message have been processed (because 
@@ -189,7 +190,7 @@ object EventSourcedExample extends IOApp.Simple:
                     // from the event store and reapply them to the state which will 
                     // result in the very same state as before the shutdown.
           actor  <- EnergyTrackerActor.spawn()
-          energy <- actor ? EnergyTrackerActor.GetEnergy
+          energy <- actor ? EnergyTrackerActor.Message.GetEnergy
           _      <- IO.println(s"The tracker now reports $energy energy.")
 
         yield ()

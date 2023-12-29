@@ -1,14 +1,15 @@
 package peloton
 
 import peloton.persistence.PayloadCodec
+import peloton.persistence.JsonPayloadCodec
+
+import io.circe.*
+import io.circe.generic.semiauto.*
 
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import cats.effect.testing.scalatest.AsyncIOSpec
-
-import io.circe.*
-import io.circe.generic.semiauto.*
 
 class JsonPayloadCodecSpec
     extends AsyncFlatSpec 
@@ -68,6 +69,6 @@ object JsonPayloadCodecSpec:
                           o: Option[Long]
                         )
 
-  val payloadCodec: PayloadCodec[MyData] = persistence.JsonPayloadCodec.create
+  val payloadCodec: PayloadCodec[MyData] = JsonPayloadCodec.create
 
 end JsonPayloadCodecSpec

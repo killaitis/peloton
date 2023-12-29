@@ -11,9 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.*
 
 import actors.CascadingActor
-import actors.CascadingActor.*
 import actors.CollectorActor
-import actors.CollectorActor.*
 import actors.EffectActor
 
 import StatefulActorSpec.*
@@ -27,6 +25,9 @@ class StatefulActorSpec
 
   it should "spawn a new actor" in:
     ActorSystem.use: _ ?=> 
+      import actors.CollectorActor.Message.*
+      import actors.CollectorActor.Response.*
+
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Get() asserting { _ shouldBe GetResponse(words = Nil) }
@@ -35,6 +36,9 @@ class StatefulActorSpec
 
   it should "handle messages sent by the ASK pattern" in:
     ActorSystem.use: _ ?=> 
+      import actors.CollectorActor.Message.*
+      import actors.CollectorActor.Response.*
+
       for
         actor  <- CollectorActor.spawn()
         _      <- actor ? Add("Actors") asserting { _ shouldBe AddResponse(wordAdded = "Actors") }
@@ -46,6 +50,9 @@ class StatefulActorSpec
 
   it should "handle messages sent by the TELL pattern" in:
     ActorSystem.use: _ ?=> 
+      import actors.CollectorActor.Message.*
+      import actors.CollectorActor.Response.*
+
       for
         actor  <- CollectorActor.spawn()
         words   = "Actor" :: "tests" :: "are" :: "very" :: "important" :: Nil
@@ -56,6 +63,9 @@ class StatefulActorSpec
 
   it should "be able to cascade ASK messages" in:
     ActorSystem.use: _ ?=> 
+      import actors.CascadingActor.Message.*
+      import actors.CascadingActor.Response.*
+
       for
         actorC <- CascadingActor.spawn("Actor C", None)
         actorB <- CascadingActor.spawn("Actor B", Some(actorC))
@@ -80,51 +90,60 @@ class StatefulActorSpec
   
   it should "be able to pipe messages from a running fiber to itself" in:
     ActorSystem.use: _ ?=> 
+      import actors.EffectActor.Message.*
+      import actors.EffectActor.Response.*
+
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
         // Initially, there should no result.
-        _      <- actor ? EffectActor.Get() asserting { _ shouldBe EffectActor.GetResponse(meaningOfLife = None) }
+        _      <- actor ? Get() asserting { _ shouldBe GetResponse(meaningOfLife = None) }
 
         // Start the effect
-        _      <- actor ? EffectActor.Run() asserting { _ shouldBe EffectActor.RunResponse(effectStarted = true) }
+        _      <- actor ? Run() asserting { _ shouldBe RunResponse(effectStarted = true) }
         
         // wait for 5 second. The effect should then be finished
         _      <- IO.sleep(5.seconds)
 
         // Check the result of the completed effect
-        _      <- actor ? EffectActor.Get() asserting { _ shouldBe EffectActor.GetResponse(meaningOfLife = Some(42)) }
+        _      <- actor ? Get() asserting { _ shouldBe GetResponse(meaningOfLife = Some(42)) }
 
         _      <- actor.terminate
       yield ()
 
   it should "be able to cancel the effect fiber" in:
     ActorSystem.use: _ ?=> 
+      import actors.EffectActor.Message.*
+      import actors.EffectActor.Response.*
+
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
 
         // Start the effect and wait for 1 second. The effect should be running by then
-        _      <- actor ? EffectActor.Run() asserting { _ shouldBe EffectActor.RunResponse(effectStarted = true) }
+        _      <- actor ? Run() asserting { _ shouldBe RunResponse(effectStarted = true) }
         _      <- IO.sleep(1.second)
 
         // Cancel the effect. This should succeed.
-        _      <- actor ? EffectActor.Cancel() asserting { _ shouldBe EffectActor.CancelResponse(effectCancelled = true) }
+        _      <- actor ? Cancel() asserting { _ shouldBe CancelResponse(effectCancelled = true) }
 
         // Cancel the effect again. This should fail, as no effect should be running by now.
-        _      <- actor ? EffectActor.Cancel() asserting { _ shouldBe EffectActor.CancelResponse(effectCancelled = false) }
+        _      <- actor ? Cancel() asserting { _ shouldBe CancelResponse(effectCancelled = false) }
 
         _      <- actor.terminate
       yield ()
 
   it should "be able to handle a failing effect" in:
     ActorSystem.use: _ ?=> 
+      import actors.EffectActor.Message.*
+      import actors.EffectActor.Response.*
+      
       for
         actor  <- EffectActor.spawn(effect = IO.raiseError(RuntimeException()) *> meaningOfLifeEffect)
 
         // Start the effect and wait for 2 seconds. The effect should have failed by then
-        _      <- actor ? EffectActor.Run() asserting { _ shouldBe EffectActor.RunResponse(effectStarted = true) }
+        _      <- actor ? Run() asserting { _ shouldBe RunResponse(effectStarted = true) }
         _      <- IO.sleep(2.second)
-        _      <- actor ? EffectActor.Get() asserting { _ shouldBe EffectActor.GetResponse(meaningOfLife = None) }
+        _      <- actor ? Get() asserting { _ shouldBe GetResponse(meaningOfLife = None) }
 
         _      <- actor.terminate
       yield ()
@@ -137,7 +156,7 @@ object StatefulActorSpec:
         _    <- IO.println("Calculating Meaning Of Life")
         _    <- IO.sleep(2.seconds)
         mol   = 42
-        _    <- IO.println("Meaning Of Live has been calculated!")
+        _    <- IO.println("The Meaning Of Live has been calculated!")
       yield mol
     )
       .onCancel(IO.println("Calculation of Meaning Of Live has been cancelled!"))

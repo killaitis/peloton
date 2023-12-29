@@ -7,46 +7,47 @@ import cats.effect.IO
 
 object HelloActor:
 
+  // Peloton actors hold an internal state of a specific type. 
+  // Our little HelloActor will not use any state, so we simply use Unit
+  type State = Unit 
+
   // Peloton actors are typed. They will only accept messages of a specific 
   // (contravariant) type. For our HelloActor, we will accept messages of
   // `Message` subtypes.
   sealed trait Message
 
-  // Our little HelloActor will not use any state, so we simply use Unit
-  type State = Unit 
-
+  // These are the two message types the actor will accept.
+  // The Hello actor API/protocol will use both the TELL and the ASK pattern.
   object Message:
-    // These are the two message types the actor will accept.
-    case class Hello(greeting: String) extends Message
+    // - Hello messages are processed using the TELL pattern, so no response will be provided.
+    final case class Hello(greeting: String) extends Message
+    // - HowAreYou messages are processed using the ASK pattern and reply with a HowAreYouResponse.
     case object HowAreYou extends Message
 
-    // The Hello actor API/protocol will use both the TELL and the ASK pattern.
-    // - Hello messages are processed using the TELL pattern, so no response will be provided.
-    // - HowAreYou messages are processed using the ASK pattern and reply with a HowAreYouResponse.
 
+  object Response:
     // The response type for the HowAreYou message. Peloton actors can reply with any type, 
     // including basic types like String or Int. For demonstration purpose, a case class is 
     // used here.
     final case class HowAreYouResponse(msg: String)
 
-    // Unlike for the TELL pattern where no response in involved, Peloton tries its best
-    // to ensure that the compiler knows that the actor supports the ASK pattern for a 
-    // specific message type and what type will be returned. This is especially important
-    // as Peloton supports *any* response types (and you definitely do not want to have 
-    // actors replying with `Any` types). 
-    // 
-    // Peloton solves this with the help of the CanAsk type class. You as the provider of the 
-    // actor's protocol have to also provide explicit information about which methods will
-    // allow the ASK pattern and what will be the response type. You do this by defining
-    // given instances of CanAsk with both the message and response type. These given instances
-    // then have to be made available where you want to perform an ASK operation (see (*)).
-    given CanAsk[HowAreYou.type, HowAreYouResponse] = canAsk
+  // Unlike for the TELL pattern where no response in involved, Peloton tries its best
+  // to ensure that the compiler knows that the actor supports the ASK pattern for a 
+  // specific message type and what type will be returned. This is especially important
+  // as Peloton supports *any* response types (and you definitely do not want to have 
+  // actors replying with `Any` types). 
+  // 
+  // Peloton solves this with the help of the CanAsk type class. You as the provider of the 
+  // actor's protocol have to also provide explicit information about which messages will
+  // allow the ASK pattern and what will be the response type. You do this by defining
+  // given instances of CanAsk with both the message and response type. 
+  given CanAsk[Message.HowAreYou.type, Response.HowAreYouResponse] = canAsk
 
   // The behavior of the HelloActor. Behavior is basically a function that takes the current 
   // state of the actor and a message from the actor's message inbox as arguments and
   // returns a new behavior (or the current behavior if no change in behavior is required, 
   // like in our HelloWorld actor).
-  val behavior: Behavior[State, Message] = 
+  private val behavior: Behavior[State, Message] = 
     (_, message, context) => message match
       case Message.Hello(greeting) => 
         IO.println(greeting) >> 
@@ -55,7 +56,7 @@ object HelloActor:
       case Message.HowAreYou => 
         // reply implicitly returns the current behavior, so no need for an extra 
         // context.currentBehaviorM here.
-        context.reply(Message.HowAreYouResponse("I'm fine")) 
+        context.reply(Response.HowAreYouResponse("I'm fine")) 
 
   // The factory method for HelloActors. Note that it expects a given ActorSystem where it will
   // reside. While you *can* explicitly terminate an actor, it will be terminated automatically
@@ -70,10 +71,6 @@ object HelloActor:
 end HelloActor
 
 object HelloWorld extends IOApp.Simple:
-
-  // (*) Make the message-to-response bindings of the HelloActor available to our 
-  // client code to be used in the ASK pattern (see above).
-  import HelloActor.Message.given
 
   def run: IO[Unit] = 
     // An actor system is a (Cats) resource and has to be 'used'. This `use` bracket
@@ -100,8 +97,8 @@ object HelloWorld extends IOApp.Simple:
                       // but the operation is suspended until the actor replied with
                       // a response. Actors process messages in the same order they 
                       // were put into the message inbox, so when the ASK operation
-                      // finished, it is guaranteed that all messages that were previously 
-                      // sent to the actor have been processed as well.
+                      // has finished, it is guaranteed that all messages that were 
+                      // previously sent to the actor have been processed as well.
         response   <- helloActor ? HelloActor.Message.HowAreYou
         _          <- IO.println(s"The Hello actor says: $response")
       yield ()

@@ -3,7 +3,7 @@ import peloton.actor.{ActorSystem, Behavior}
 import peloton.persistence.{
   PersistenceId, 
   PayloadCodec, 
-  JsonPayloadCodec, 
+  KryoPayloadCodec, 
   DurableStateStore
 }
 
@@ -13,36 +13,40 @@ import cats.effect.{IO, IOApp}
 object DurableStateCollectorActor:
 
   // The state of the actor
-  case class State(words: List[String] = Nil)
+  final case class State(words: List[String] = Nil)
 
   // The protocol
   sealed trait Message
-  
-  // Add (ASK): adds a word to the word list and return the new word as an AddResponse
-  final case class Add(word: String) extends Message
-  final case class AddResponse(wordAdded: String)
-  given CanAsk[Add, AddResponse] = canAsk
+  object Message:
+    // Add: adds a word to the word list and return the new word as an AddResponse
+    final case class Add(word: String) extends Message
 
-  // Get (ASK): returns the current word list as a GetResponse
-  final case class Get() extends Message
-  final case class GetResponse(words: List[String])
-  given CanAsk[Get, GetResponse] = canAsk
+    // Get: returns the current word list as a GetResponse
+    final case class Get() extends Message
+
+  object Response:
+    final case class AddResponse(wordAdded: String)
+    final case class GetResponse(words: List[String])
+
+  // Define the ASK patterns.
+  given CanAsk[Message.Add, Response.AddResponse] = canAsk
+  given CanAsk[Message.Get, Response.GetResponse] = canAsk
 
   // The behavior. Durable state actors use the actor context to modify the state.
   // In fact, `ActorContext.setState` will update both the in-memory state and the 
   // version in the persistent durable state store as well. 
   private val behavior: Behavior[State, Message] =
     (state, message, context) => message match
-      case Add(word) => 
+      case Message.Add(word) => 
         context.setState(State(state.words :+ word)) >> 
-        context.reply(AddResponse(word))
+        context.reply(Response.AddResponse(word))
 
-      case Get() => 
-        context.reply(GetResponse(state.words))
+      case Message.Get() => 
+        context.reply(Response.GetResponse(state.words))
 
   // A durable state actor requires the existence a given instance of a PayloadCodec 
-  // for its state type in scope. A JsonPayloadCodec usually fits.
-  private given PayloadCodec[State] = JsonPayloadCodec.create
+  // for its state type in scope. A KryoPayloadCodec usually fits.
+  private given PayloadCodec[State] = KryoPayloadCodec.create
 
   // The factory method for our actor. It requres the existence of both
   // - An ActorSytem
@@ -78,21 +82,23 @@ object DurableStateExample extends IOApp.Simple:
     // configuration (usually in `./src/main/resources/application.conf`).
     DurableStateStore.use: _ ?=> 
       ActorSystem.use: _ ?=>
+        import DurableStateCollectorActor.Message.*
+
         for 
                     // Spawn the new actor. If it has already been spawned before, it will 
                     // fetch the latest revision of the state from the durable state store
           actor  <- DurableStateCollectorActor.spawn()
 
                     // TELL the actor to add some words
-          _      <- actor ! DurableStateCollectorActor.Add("actors")
-          _      <- actor ! DurableStateCollectorActor.Add("are")
-          _      <- actor ! DurableStateCollectorActor.Add("great")
+          _      <- actor ! Add("actors")
+          _      <- actor ! Add("are")
+          _      <- actor ! Add("great")
 
                     // ASK the actor about the current word list. Due to the nature of the 
                     // ASK pattern, it is guaranteed that all previous message have also been 
                     // processed, i.e., we can assume that the new state of the actor is 
                     // persisted in the durable state store.
-          words  <- actor ? DurableStateCollectorActor.Get()
+          words  <- actor ? Get()
           _      <- IO.println(s"collected words: $words")
         yield ()
 

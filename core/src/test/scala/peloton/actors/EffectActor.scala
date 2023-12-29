@@ -10,64 +10,64 @@ import cats.effect.*
   */
 object EffectActor:
 
-  sealed trait Command
-
-  final case class Run() extends Command
-  final case class RunResponse(effectStarted: Boolean)
-  given CanAsk[Run, RunResponse] = canAsk
-  
-  final case class Cancel() extends Command
-  final case class CancelResponse(effectCancelled: Boolean)
-  given CanAsk[Cancel, CancelResponse] = canAsk
-  
-  final case class Get() extends Command
-  final case class GetResponse(meaningOfLife: Option[Int])
-  given CanAsk[Get, GetResponse] = canAsk
-
-  final case class HandleResult(mol: Option[Int]) extends Command
-  final case class HandleResultResponse()
-  given CanAsk[HandleResult, HandleResultResponse] = canAsk
-
   case class State(
     runningFiber: Option[FiberIO[Unit]] = None, 
     meaningOfLife: Option[Int] = None
   )
 
+  sealed trait Message
+  object Message:
+    final case class Run() extends Message
+    final case class Cancel() extends Message
+    final case class Get() extends Message
+    final case class HandleResult(mol: Option[Int]) extends Message
+
+  object Response:
+    final case class RunResponse(effectStarted: Boolean)
+    final case class CancelResponse(effectCancelled: Boolean)
+    final case class GetResponse(meaningOfLife: Option[Int])
+    final case class HandleResultResponse()
+
+  given CanAsk[Message.Run,           Response.RunResponse]          = canAsk
+  given CanAsk[Message.Cancel,        Response.CancelResponse]       = canAsk
+  given CanAsk[Message.Get,           Response.GetResponse]          = canAsk
+  given CanAsk[Message.HandleResult,  Response.HandleResultResponse] = canAsk
+
   def spawn(name: String = "EffectActor", effect: IO[Int])(using actorSystem: ActorSystem) = 
-    actorSystem.spawnActor[State, Command](
+    actorSystem.spawnActor[State, Message](
       name = Some(name),
       initialState = State(),
       initialBehavior = (state, message, context) => message match
-        case Run() => 
+        case Message.Run() => 
           state.runningFiber match
             case None => // no effect is currently running
               for
                 fiber  <- context.pipeToSelf(effect):
                             case Outcome.Canceled() | Outcome.Errored(_) => 
-                              IO.pure(List(HandleResult(None)))
+                              IO.pure(List(Message.HandleResult(None)))
                             case Outcome.Succeeded(mol) => 
-                              mol.map(mol => List(HandleResult(Some(mol))))
+                              mol.map(mol => List(Message.HandleResult(Some(mol))))
                 _      <- context.setState(State(runningFiber = Some(fiber)))
-                _      <- context.reply(RunResponse(effectStarted = true))
+                _      <- context.reply(Response.RunResponse(effectStarted = true))
               yield context.currentBehavior
             case Some(fiber) => // effect is already running
-              context.reply(RunResponse(effectStarted = false))
+              context.reply(Response.RunResponse(effectStarted = false))
 
-        case Cancel() => 
+        case Message.Cancel() => 
           state.runningFiber match
             case None => // no effect is currently running
-              context.reply(CancelResponse(effectCancelled = false))
+              context.reply(Response.CancelResponse(effectCancelled = false))
             case Some(fiber) => // effect is already running
               for
                 _  <- fiber.cancel
                 _  <- context.setState(State(runningFiber = None))
-                _  <- context.reply(CancelResponse(effectCancelled = true))
+                _  <- context.reply(Response.CancelResponse(effectCancelled = true))
               yield context.currentBehavior
 
-        case Get() => 
-          context.reply(GetResponse(meaningOfLife = state.meaningOfLife))
+        case Message.Get() => 
+          context.reply(Response.GetResponse(meaningOfLife = state.meaningOfLife))
 
-        case HandleResult(meaningOfLife) => 
+        case Message.HandleResult(meaningOfLife) => 
             context.setState(State(runningFiber = None, meaningOfLife = meaningOfLife)) >> 
-            context.reply(HandleResultResponse())
+            context.reply(Response.HandleResultResponse())
     )

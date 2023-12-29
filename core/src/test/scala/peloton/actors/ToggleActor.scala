@@ -17,30 +17,32 @@ object ToggleActor:
     case ModeB
 
   sealed trait Message
+  object Message:
+    final case class Toggle() extends Message
+    final case class GetMode() extends Message
+    
+  object Response:
+    final case class ToggleResponse()
+    final case class GetModeResponse(mode: Mode)
 
-  final case class Toggle() extends Message
-  final case class ToggleResponse()
-  given CanAsk[Toggle, ToggleResponse] = canAsk
+  given CanAsk[Message.Toggle,  Response.ToggleResponse]  = canAsk
+  given CanAsk[Message.GetMode, Response.GetModeResponse] = canAsk
 
-  final case class GetMode() extends Message
-  final case class GetModeResponse(mode: Mode)
-  given CanAsk[GetMode, GetModeResponse] = canAsk
-
-  val behaviorA: Behavior[Unit, Message] = (_, message, context) => message match
-    case Toggle() => 
-      context.reply(ToggleResponse()) >> 
+  private val behaviorA: Behavior[Unit, Message] = (_, message, context) => message match
+    case Message.Toggle() => 
+      context.reply(Response.ToggleResponse()) >> 
       behaviorB.pure
 
-    case GetMode() =>
-      context.reply(GetModeResponse(Mode.ModeA))
+    case Message.GetMode() =>
+      context.reply(Response.GetModeResponse(Mode.ModeA))
 
-  val behaviorB: Behavior[Unit, Message] = (_, message, context) => message match
-    case Toggle() => 
-      context.reply(ToggleResponse()) >> 
+  private val behaviorB: Behavior[Unit, Message] = (_, message, context) => message match
+    case Message.Toggle() => 
+      context.reply(Response.ToggleResponse()) >> 
       behaviorA.pure
 
-    case GetMode() =>
-      context.reply(GetModeResponse(Mode.ModeB))
+    case Message.GetMode() =>
+      context.reply(Response.GetModeResponse(Mode.ModeB))
 
   def spawn(name: String)(using actorSystem: ActorSystem) = 
     actorSystem.spawnActor[Unit, Message](

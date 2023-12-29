@@ -75,8 +75,8 @@ class DurableStateActorBenchmark
                                         (0 until numMessages)
                                           .traverse_ { j => 
                                             for
-                                              _ <- fooActor ! FooActor.Set(x = j, y = 2*j)
-                                              _ <- barActor ! BarActor.Set(s = s"x_$j")
+                                              _ <- fooActor ! FooActor.Message.Set(x = j, y = 2*j)
+                                              _ <- barActor ! BarActor.Message.Set(s = s"x_$j")
                                             yield ()
                                           }
                                       }
@@ -89,11 +89,11 @@ class DurableStateActorBenchmark
                       _          <- (0 until numActors)
                                       .parTraverse_(i => 
                                         for 
-                                          _  <- fooActors(i) ? FooActor.Get() asserting {
-                                                  _ shouldBe FooActor.GetResponse(x = numMessages - 1, y = 2*(numMessages - 1))
+                                          _  <- fooActors(i) ? FooActor.Message.Get() asserting {
+                                                  _ shouldBe FooActor.Response.GetResponse(x = numMessages - 1, y = 2*(numMessages - 1))
                                                 }
-                                          _  <- barActors(i) ? BarActor.Get() asserting {
-                                                  _ shouldBe BarActor.GetResponse(s = s"x_${numMessages - 1}")
+                                          _  <- barActors(i) ? BarActor.Message.Get() asserting {
+                                                  _ shouldBe BarActor.Response.GetResponse(s = s"x_${numMessages - 1}")
                                                 }
                                         yield ()
                                       )

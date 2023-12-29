@@ -12,8 +12,6 @@ import peloton.EventStoreSpec.*
 import peloton.EventStoreSpec.given
 
 import cats.effect.testing.scalatest.AsyncIOSpec
-import io.circe.*
-import io.circe.generic.semiauto.*
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -177,8 +175,8 @@ object EventStoreSpec:
   final case class MyEvent(i: Int, s: String)
   final case class MyState(x: Int)
 
-  given PayloadCodec[MyEvent] = persistence.JsonPayloadCodec.create
-  given PayloadCodec[MyState] = persistence.JsonPayloadCodec.create
+  given PayloadCodec[MyEvent] = persistence.KryoPayloadCodec.create
+  given PayloadCodec[MyState] = persistence.KryoPayloadCodec.create
 
   val persistenceId = PersistenceId.of("my-event")
 

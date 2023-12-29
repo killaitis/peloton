@@ -57,3 +57,5 @@ The core concepts of Peloton are described [here](./docs/Concepts.md).
 
 ## Examples
 For an easyer start, examples can be found in the [examples](./examples/) folder.
+
+You can also check the actors used for [testing](./core/src/test/scala/peloton/actors/)

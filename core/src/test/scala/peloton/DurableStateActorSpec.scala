@@ -7,15 +7,14 @@ import peloton.persistence.*
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 
-import io.circe.*
-import io.circe.generic.semiauto.*
-
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import utils.DurableStateStoreMock
 
 import actors.CountingActor
+import actors.CountingActor.Command.*
+import actors.CountingActor.Response.*
 
 
 class DurableStateActorSpec
@@ -36,8 +35,8 @@ class DurableStateActorSpec
       for
         _      <- store.clear()
         actor  <- CountingActor.spawn(persistenceId)
-        _      <- (actor ? CountingActor.GetState).asserting:
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = false, counter = 0)
+        _      <- (actor ? GetState).asserting:
+                    _ shouldBe GetStateResponse(isOpen = false, counter = 0)
         _      <- actor.terminate
       yield ()
 
@@ -54,11 +53,11 @@ class DurableStateActorSpec
                     // Only sending commands to the actor should.
                     _ shouldBe None
 
-        _      <- actor ! CountingActor.Open
-        _      <- (1 to incs).traverse_(_ => actor ! CountingActor.Inc)
+        _      <- actor ! Open
+        _      <- (1 to incs).traverse_(_ => actor ! Inc)
 
-        _      <- (actor ? CountingActor.GetState).asserting:
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = true, counter = incs) 
+        _      <- (actor ? GetState).asserting:
+                    _ shouldBe GetStateResponse(isOpen = true, counter = incs) 
                     
         _      <- (store.read(persistenceId)).asserting:
                     case Some(persistence.DurableState(CountingActor.State(`incs`), `incs`, _)) => succeed
@@ -74,9 +73,9 @@ class DurableStateActorSpec
       def runActor(numberOfIncrements: Int) = 
         for
           actor  <- CountingActor.spawn(persistenceId)
-          _      <- actor ! CountingActor.Open
-          _      <- (1 to numberOfIncrements).traverse_(_ => actor ! CountingActor.Inc)
-          _      <- actor ? CountingActor.Close // use ASK to ensure that all previous messages have been processed
+          _      <- actor ! Open
+          _      <- (1 to numberOfIncrements).traverse_(_ => actor ! Inc)
+          _      <- actor ? Close // use ASK to ensure that all previous messages have been processed
           _      <- actor.terminate
         yield ()
 
@@ -88,10 +87,10 @@ class DurableStateActorSpec
         _      <- runActor(7)
 
         actor  <- CountingActor.spawn(persistenceId)
-        _      <- (actor ? CountingActor.GetState).asserting:
+        _      <- (actor ? GetState).asserting:
                     // The actor must have started with a fresh non-persistent state, i.e., isOpen=false, 
                     // and a persistent state with 12 increments from 3 runs
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = false, counter = 12)
+                    _ shouldBe GetStateResponse(isOpen = false, counter = 12)
 
         _      <- store.read(persistenceId).asserting:
                     case Some(persistence.DurableState(CountingActor.State(12), 12, _)) => succeed
@@ -108,20 +107,20 @@ class DurableStateActorSpec
         actor  <- CountingActor.spawn(persistenceId)
 
         // Send two Inc messages when the actor's gate is not open. This should stash the messages.
-        _      <- actor ! CountingActor.Inc
-        _      <- actor ! CountingActor.Inc
-        _      <- (actor ? CountingActor.GetState).asserting:
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = false, counter = 0)
+        _      <- actor ! Inc
+        _      <- actor ! Inc
+        _      <- (actor ? GetState).asserting:
+                    _ shouldBe GetStateResponse(isOpen = false, counter = 0)
 
         // Now open the actor's gate. This should unstash all messages and hande them
-        _      <- actor ! CountingActor.Open
-        _      <- (actor ? CountingActor.GetState).asserting:
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = true, counter = 2)
+        _      <- actor ! Open
+        _      <- (actor ? GetState).asserting:
+                    _ shouldBe GetStateResponse(isOpen = true, counter = 2)
 
         // Now that the actor's gate is open, an Inc message should increment the counter
-        _      <- actor ! CountingActor.Inc
-        _      <- (actor ? CountingActor.GetState).asserting:
-                    _ shouldBe CountingActor.GetStateResponse(isOpen = true, counter = 3)
+        _      <- actor ! Inc
+        _      <- (actor ? GetState).asserting:
+                    _ shouldBe GetStateResponse(isOpen = true, counter = 3)
 
         _      <- actor.terminate
       yield ()
@@ -132,7 +131,7 @@ class DurableStateActorSpec
         _      <- store.clear()
         actor  <- CountingActor.spawn(persistenceId)
         _      <- actor
-                    .ask(CountingActor.Fail)
+                    .ask(Fail)
                     .attempt
                     .asserting { _ shouldBe Left(CountingActor.CountingException) }
         _      <- actor.terminate
@@ -141,7 +140,7 @@ class DurableStateActorSpec
 end DurableStateActorSpec
 
 object DurableStateActorSpec:
-  private given PayloadCodec[CountingActor.State] = persistence.JsonPayloadCodec.create
+  private given PayloadCodec[CountingActor.State] = persistence.KryoPayloadCodec.create
   private given DurableStateStore = new DurableStateStoreMock
   
   private val persistenceId = PersistenceId.of("my-persistent-actor")

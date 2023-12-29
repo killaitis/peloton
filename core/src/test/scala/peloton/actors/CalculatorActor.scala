@@ -10,51 +10,56 @@ import peloton.actor.EventAction
 import peloton.persistence.PersistenceId
 import peloton.persistence.EventStore
 import peloton.persistence.PayloadCodec
-import peloton.persistence.JsonPayloadCodec
+import peloton.persistence.KryoPayloadCodec
 import peloton.actor.ActorContext
 import peloton.actor.SnapshotPredicate
 
 /**
-  * A event sourced actor with simple calculation operations 
+  * An event sourced actor with simple calculation operations 
   */
 object CalculatorActor:
 
-  sealed trait Message
-
-  case class Add(value: Int) extends Message
-  case class Sub(value: Int) extends Message
-  
-  case object GetState extends Message
-  case class GetStateResponse(value: Int)
-  given CanAsk[GetState.type, GetStateResponse] = canAsk
-  
+  // --- State
   case class State(value: Int = 0)
 
-  sealed trait Event
-  case class AddEvent(value: Int) extends Event
-  case class SubEvent(value: Int) extends Event
+  // --- Protocol
+  sealed trait Message
+  object Message:
+    final case class Add(value: Int) extends Message
+    final case class Sub(value: Int) extends Message
+    
+    case object GetState extends Message
+  
+  object Response:
+    final case class GetStateResponse(value: Int)
 
-  given PayloadCodec[Event] = JsonPayloadCodec.create
-  given PayloadCodec[State] = JsonPayloadCodec.create
+  given CanAsk[Message.GetState.type, Response.GetStateResponse] = canAsk
+
+  // --- Events
+  sealed trait Event
+  object Event:
+    final case class Add(value: Int) extends Event
+    final case class Sub(value: Int) extends Event
+
+  given PayloadCodec[Event] = KryoPayloadCodec.create
+  given PayloadCodec[State] = KryoPayloadCodec.create
 
   private def messageHandler(state: State, message: Message, context: ActorContext[State, Message]): IO[EventAction[Event]] = 
     message match
-      case Add(value) =>
-        IO.pure(EventAction.Persist(AddEvent(value)))
+      case Message.Add(value) =>
+        EventAction.persist(Event.Add(value))
 
-      case Sub(value) =>
-        IO.pure(EventAction.Persist(SubEvent(value)))
+      case Message.Sub(value) =>
+        EventAction.persist(Event.Sub(value))
 
-      case GetState =>
-        context.reply(GetStateResponse(state.value)) >> 
-        IO.pure(EventAction.Ignore)
-
+      case Message.GetState =>
+        context.reply(Response.GetStateResponse(state.value)) >> 
+        EventAction.ignore
 
   private def eventHandler(state: State, event: Event): State = 
     event match
-      case AddEvent(value) => State(state.value + value)
-      case SubEvent(value) => State(state.value - value)
-
+      case Event.Add(value) => State(state.value + value)
+      case Event.Sub(value) => State(state.value - value)
 
   def spawn(persistenceId: PersistenceId, 
             name: String = "CalculatorActor",

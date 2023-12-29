@@ -5,7 +5,7 @@ import peloton.actor.ActorRef
 import peloton.config.Config
 import peloton.config.Config.*
 
-import peloton.actors.HelloActor
+import peloton.actors.GreetingActor
 import peloton.actors.FooActor
 
 import cats.effect.IO
@@ -32,25 +32,25 @@ class RemoteActorSpec
   it should "be able to receive messages via HTTP requests" in:    
     ActorSystem.use(config): _ ?=> 
       for
-        _      <- HelloActor.spawn("HelloActor")
-        actor  <- ActorRef.of[HelloActor.Message](URI("peloton://localhost:5000/HelloActor"))
-        _      <- actor ! HelloActor.Message.Hello("Hello, dear actor!")
-        _      <- (actor ? HelloActor.Message.HowAreYou).asserting:
-                    _ shouldBe HelloActor.Message.HowAreYouResponse("I'm fine")
+        _      <- GreetingActor.spawn("GreetingActor")
+        actor  <- ActorRef.of[GreetingActor.Message](URI("peloton://localhost:5000/GreetingActor"))
+        _      <- actor ! GreetingActor.Message.Greet("Hello, dear actor!")
+        _      <- (actor ? GreetingActor.Message.HowAreYou).asserting:
+                    _ shouldBe GreetingActor.Response.HowAreYouResponse("I'm fine")
       yield ()
 
   it should "handle messages to non-resolvable actors" in:    
     ActorSystem.use(config): _ ?=> 
       for
-        _      <- HelloActor.spawn("HelloActor")
-        actor  <- ActorRef.of[HelloActor.Message](URI("peloton://localhost:5000/SomeOtherActor")) // <-- does not exist
-        _      <- (actor ! HelloActor.Message.Hello("Hello, dear actor!")).assertThrows[UnexpectedStatus]
+        _      <- GreetingActor.spawn("GreetingActor")
+        actor  <- ActorRef.of[GreetingActor.Message](URI("peloton://localhost:5000/SomeOtherActor")) // <-- does not exist
+        _      <- (actor ! GreetingActor.Message.Greet("Hello, dear actor!")).assertThrows[UnexpectedStatus]
       yield ()
 
   it should "handle invalid message types" in:    
     ActorSystem.use(config): _ ?=> 
       for
-        _      <- HelloActor.spawn("HelloActor")
-        actor  <- ActorRef.of[FooActor.Message](URI("peloton://localhost:5000/HelloActor")) // <-- invalid type
-        _      <- (actor ! FooActor.Set(3, 2)).assertThrows[UnexpectedStatus]
+        _      <- GreetingActor.spawn("GreetingActor")
+        actor  <- ActorRef.of[FooActor.Message](URI("peloton://localhost:5000/GreetingActor")) // <-- invalid message type
+        _      <- (actor ! FooActor.Message.Set(3, 2)).assertThrows[UnexpectedStatus]
       yield ()

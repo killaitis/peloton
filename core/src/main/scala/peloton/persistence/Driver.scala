@@ -6,7 +6,7 @@ import cats.effect.{IO, Resource}
 import scala.util.Try
 
 /**
-  * A driver is able to create an instance of a [[DurableStateStore]] as a `Resource`.
+  * A driver is able to create an instances of [[DurableStateStore]] or [[EventStore]] as a `Resource`.
   */
 trait Driver:
   def createDurableStateStore(persistenceConfig: Config.Persistence): IO[Resource[IO, DurableStateStore]]

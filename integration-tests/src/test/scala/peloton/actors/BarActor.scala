@@ -8,24 +8,27 @@ import cats.effect.IO
 import peloton.actor.ActorRef
 import peloton.actor.ActorSystem
 import peloton.persistence.DurableStateStore
-import peloton.persistence.JsonPayloadCodec
+import peloton.persistence.KryoPayloadCodec
 import peloton.persistence.PayloadCodec
 import peloton.persistence.PersistenceId
 
 object BarActor:
 
   case class State(s: String = "")
-  private given PayloadCodec[State] = JsonPayloadCodec.create
     
   sealed trait Message
-  case class Set(s: String) extends Message
-  case class Get() extends Message
-  
-  case class SetResponse()
-  case class GetResponse(s: String)
+  object Message:
+    case class Set(s: String) extends Message
+    case class Get() extends Message
 
-  given CanAsk[Set, SetResponse] = canAsk
-  given CanAsk[Get, GetResponse] = canAsk
+  object Response:
+    case class SetResponse()
+    case class GetResponse(s: String)
+
+  given CanAsk[Message.Set, Response.SetResponse] = canAsk
+  given CanAsk[Message.Get, Response.GetResponse] = canAsk
+
+  private given PayloadCodec[State] = KryoPayloadCodec.create
 
   def spawn(name: String, persistenceId: PersistenceId)(using DurableStateStore)(using actorSystem: ActorSystem): IO[ActorRef[Message]] =
     actorSystem.spawnDurableStateActor(
@@ -34,12 +37,12 @@ object BarActor:
       initialState    = State(), 
       initialBehavior = 
         (state, message, context) => message match
-          case Set(s) => 
+          case Message.Set(s) => 
             context.setState(State(s = s)) >> 
-            context.reply(SetResponse())
+            context.reply(Response.SetResponse())
 
-          case Get() => 
-            context.reply(GetResponse(state.s))
+          case Message.Get() => 
+            context.reply(Response.GetResponse(state.s))
     )  
 
 end BarActor

@@ -6,27 +6,29 @@ import peloton.actor.ActorSystem
 
 import cats.effect.IO
 
-object HelloActor:
+object GreetingActor:
 
   sealed trait Message
 
   object Message:
-    case class Hello(greeting: String) extends Message
+    case class Greet(greeting: String) extends Message
     case object HowAreYou extends Message
 
+  object Response:
     final case class HowAreYouResponse(msg: String)
-    given CanAsk[HowAreYou.type, HowAreYouResponse] = canAsk
-
+    
+  given CanAsk[Message.HowAreYou.type, Response.HowAreYouResponse] = canAsk
+    
   def spawn(name: String)(using actorSystem: ActorSystem) = 
     actorSystem.spawnActor[Boolean, Message](
       name            = Some(name),
       initialState    = false,
       initialBehavior = (alreadyGreeted, message, context) => message match
-                          case Message.Hello(greeting) => 
+                          case Message.Greet(greeting) => 
                             IO.println(greeting) >> context.setState(true)
                           case Message.HowAreYou => 
                             if alreadyGreeted 
-                            then context.reply(Message.HowAreYouResponse("I'm fine"))
-                            else context.reply(Message.HowAreYouResponse("Feeling lonely"))
+                            then context.reply(Response.HowAreYouResponse("I'm fine"))
+                            else context.reply(Response.HowAreYouResponse("Feeling lonely"))
     )
-end HelloActor
+end GreetingActor
