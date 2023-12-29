@@ -36,4 +36,10 @@ class CronSchedulerSpec
             _      <- (actor ? CounterActor.Get).asserting(_ should be >= 10)
           yield ()
 
+  it should "consider a given date range" in:
+    pending
+
+  it should "consider a given timezone" in:
+    pending
+
 end CronSchedulerSpec

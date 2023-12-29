@@ -9,8 +9,7 @@ import org.quartz.TriggerBuilder.*
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.{JobDataMap, JobExecutionContext, JobKey, Scheduler, TriggerKey}
 
-import java.time.ZoneId
-import java.util.{TimeZone, UUID}
+import java.util.{Date, TimeZone, UUID}
 
 
 final case class CronScheduler private (
@@ -36,12 +35,23 @@ final case class CronScheduler private (
     *   A valid Quartz CRON expression
     * @param timezone
     *   A Java `TimeZone`. This is used by Quartz and will affect the evaluation of the CRON expression
+    * @param startDate
+    *   A Java `Date`. The evaluation of the CRON expression by Quartz will start at this date.
+    * @param startDate
+    *   An optional Java `Date`. The evaluation of the CRON expression will start at this date. 
+    * @param endDate
+    *   An optional Java `Date`. The evaluation of the CRON expression will end at this date. 
     * @param effect
     *   An effect that is executed when Quartz fires a CRON event
     * @return
     *   Unit
     */
-  def schedule[A](cron: String, timezone: TimeZone, effect: IO[A]): IO[Unit] = 
+  def schedule[A](effect: IO[A], 
+                  cron: String, 
+                  timezone: TimeZone, 
+                  startDate: Option[Date],
+                  endDate: Option[Date]
+                 ): IO[Unit] = 
     for
       // Create a shared event queue.
       eventQueue   <- Queue.unbounded[IO, Unit]
@@ -71,7 +81,8 @@ final case class CronScheduler private (
                             .forJob(jobKey)
                             .usingJobData(jobDataMap)
                             .withSchedule(cronSchedule(cron).inTimeZone(timezone))
-                            .startNow()
+                            .startAt(startDate.getOrElse(Date()))
+                            .endAt(endDate.getOrElse(null)) // Yay, this is why we Java APIs!
                             .build()
 
                         scheduler.scheduleJob(trigger)
@@ -115,26 +126,6 @@ object CronScheduler:
     end execute
   end PublishJob
 
-  /**
-    * Creates a resource bracket for a [[CronScheduler]] resource. 
-    * 
-    * Within the lifetime of this resource, the scheduler can be used to asynchronously start effects by Quartz 
-    * cron expresiions. After the scheduler resource is released, all cron jobs started by this scheduler will
-    * be stopped and also released.
-    * 
-    * The following example will print a message every 10 seconds for 5 minutes:
-    * {{{
-    *   CronScheduler.make.use { case given CronScheduler => 
-    *     for {     
-    *       _ <- IO.println("Hello out there!").scheduled("*\/10 * * ? * *")
-    *       _ <- IO.sleep(5.minutes)
-    *     } yield ()
-    *   }
-    * }}}
-    * 
-    * @return 
-    *   the [[CronScheduler]] resource
-    */
   def make: Resource[IO, CronScheduler] =
     Dispatcher
       .parallel[IO](await = false)
@@ -151,6 +142,41 @@ object CronScheduler:
       )
   end make
 
+  /**
+    * Creates a resource bracket for a [[CronScheduler]] resource. 
+    * 
+    * Within the lifetime of this resource, the scheduler can be used to asynchronously start effects by Quartz 
+    * cron expresiions. After the scheduler resource is released, all cron jobs started by this scheduler will
+    * be stopped and also released.
+    * 
+    * The following example will print a message every 10 seconds for 5 minutes:
+    * {{{
+    *   CronScheduler.use { _ ?=> 
+    *     for {     
+    *       _ <- IO.println("Hello out there!").scheduled("*\/10 * * ? * *")
+    *       _ <- IO.sleep(5.minutes)
+    *     } yield ()
+    *   }
+    * }}}
+    * 
+    * 
+    * You can also provide a specific timezone, start and end date:
+    * {{{
+    *   CronScheduler.use { _ ?=> 
+    *     for {     
+    *       _  <- IO.println("Hello out there!")
+    *               .scheduled(
+    *                 cron      = "*\/10 * * ? * *", 
+    *                 timezone  = TimeZone.getTimeZone("PST"), // defaults to the system TZ
+    *                 startDate = Some(myStartDate),
+    *                 startDate = Some(myEndDate),
+    *               )
+    *       ...
+    *     } yield ()
+    *   }
+    * }}}
+    * 
+    */
   def use[A](f: CronScheduler ?=> IO[A]): IO[A] = 
     CronScheduler.make.use { case given CronScheduler => f }
     
@@ -171,13 +197,23 @@ object CronScheduler:
         *   A valid Quartz CRON expression 
         * @param timezone
         *   A Java `TimeZone`. Used to evaluate the CRON expression. Defaults to the system timezone.
+        * @param startDate
+        *   An optional Java `Date`. The evaluation of the CRON expression will start at this date. 
+        *   Default is `None`, i.e., the current time (now).
+        * @param endDate
+        *   An optional Java `Date`. The evaluation of the CRON expression will end at this date. 
+        *   Default is `None`, i.e., the expression will be evaluated unlimited.
         * @param scheduler
         *   a given [[CronScheduler]] which will be used to schedule the effect
         * @return
         *   As scheduling an effect is also an effect, this function returns an effect in `Unit`
         */
-      def scheduled(cron: String, timezone: TimeZone = TimeZone.getTimeZone(ZoneId.systemDefault()))(using scheduler: CronScheduler): IO[Unit] = 
-        scheduler.schedule(cron, timezone, ioa)
+      def scheduled(cron: String, 
+                    timezone: TimeZone = TimeZone.getDefault,
+                    startDate: Option[Date] = None,
+                    endDate: Option[Date] = None,
+                   )(using scheduler: CronScheduler): IO[Unit] = 
+        scheduler.schedule(ioa, cron, timezone, startDate, endDate)
     
   end syntax
 
