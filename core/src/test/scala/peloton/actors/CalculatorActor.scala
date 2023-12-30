@@ -20,7 +20,7 @@ import peloton.actor.SnapshotPredicate
 object CalculatorActor:
 
   // --- State
-  case class State(value: Int = 0)
+  final case class State(value: Int = 0)
 
   // --- Protocol
   sealed trait Message

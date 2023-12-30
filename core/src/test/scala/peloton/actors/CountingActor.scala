@@ -25,11 +25,10 @@ import peloton.actor.Behavior
 object CountingActor:
 
   // The persistent state
-  case class State(counter: Int = 0)
-  given PayloadCodec[State] = KryoPayloadCodec.create
+  final case class State(counter: Int = 0)
 
   // The non-persistent state
-  case class NPState(isOpen: Boolean = false)
+  final case class NPState(isOpen: Boolean = false)
 
   // Commands (messages) and responses
   sealed trait Command
@@ -50,6 +49,8 @@ object CountingActor:
   given CanAsk[Command.Close.type,    Response.CloseResponse.type]  = canAsk
   given CanAsk[Command.GetState.type, Response.GetStateResponse]    = canAsk
   given CanAsk[Command.Fail.type,     Response.FailResponse]        = canAsk
+
+  private given PayloadCodec[State] = KryoPayloadCodec.create
 
   case object CountingException extends Exception
 

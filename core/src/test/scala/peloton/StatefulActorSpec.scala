@@ -30,7 +30,7 @@ class StatefulActorSpec
 
       for
         actor  <- CollectorActor.spawn()
-        _      <- actor ? Get() asserting { _ shouldBe GetResponse(words = Nil) }
+        _      <- actor ? Get asserting { _ shouldBe GetResponse(words = Nil) }
         _      <- actor.terminate
       yield ()
 
@@ -44,7 +44,7 @@ class StatefulActorSpec
         _      <- actor ? Add("Actors") asserting { _ shouldBe AddResponse(wordAdded = "Actors") }
         _      <- actor ? Add("are")    asserting { _ shouldBe AddResponse(wordAdded = "are") }
         _      <- actor ? Add("great")  asserting { _ shouldBe AddResponse(wordAdded = "great") }
-        _      <- actor ? Get()         asserting { _ shouldBe GetResponse(words = "Actors" :: "are" :: "great" :: Nil) }
+        _      <- actor ? Get           asserting { _ shouldBe GetResponse(words = "Actors" :: "are" :: "great" :: Nil) }
         _      <- actor.terminate
       yield ()
 
@@ -57,7 +57,7 @@ class StatefulActorSpec
         actor  <- CollectorActor.spawn()
         words   = "Actor" :: "tests" :: "are" :: "very" :: "important" :: Nil
         _      <- words.traverse(word => actor ! Add(word))
-        _      <- actor ? Get() asserting { _ shouldBe GetResponse(words) }
+        _      <- actor ? Get asserting { _ shouldBe GetResponse(words) }
         _      <- actor.terminate
       yield ()
 

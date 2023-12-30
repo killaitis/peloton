@@ -21,8 +21,8 @@ object CascadingActor:
 
   given CanAsk[Message.Hello, Response.HelloResponse] = canAsk
 
-  private val behavior: (name: String, delegate: Option[ActorRef[Message]]) => Behavior[State, Message] = 
-    (name, delegate) => (_, message, context) => message match
+  private def behavior(name: String, delegate: Option[ActorRef[Message]]): Behavior[State, Message] = 
+    (_, message, context) => message match
       case Message.Hello(hello) => 
         delegate match
           case Some(delegate) => 
