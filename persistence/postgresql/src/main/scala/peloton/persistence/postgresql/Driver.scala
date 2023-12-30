@@ -1,7 +1,6 @@
 package peloton.persistence.postgresql
 
 import peloton.config.Config
-import peloton.config.Config.Persistence
 import peloton.persistence.DurableStateStore
 import peloton.persistence.EventStore
 
@@ -17,15 +16,15 @@ import scala.util.Try
 
 class Driver extends peloton.persistence.Driver:
 
-  override def createDurableStateStore(persistenceConfig: Config.Persistence): IO[Resource[IO, DurableStateStore]] =
+  override def createDurableStateStore(config: Config.DurableStateStore): IO[Resource[IO, DurableStateStore]] =
     for
-      hikariConfig       <- getHikariConfig(using persistenceConfig)
+      hikariConfig       <- getHikariConfig(config.params)
       durableStateStore   = createPostgreSQLDurableStateStore(hikariConfig)
     yield durableStateStore
 
-  override def createEventStore(persistenceConfig: Persistence): IO[Resource[IO, EventStore]] = 
+  override def createEventStore(config: Config.EventStore): IO[Resource[IO, EventStore]] = 
     for
-      hikariConfig <- getHikariConfig(using persistenceConfig)
+      hikariConfig <- getHikariConfig(config.params)
       eventStore    = createPostgreSQLEventStore(hikariConfig)
     yield eventStore
 
@@ -41,7 +40,13 @@ class Driver extends peloton.persistence.Driver:
       eventStore            = new EventStorePostgreSQL
     yield eventStore
 
-  private def getHikariConfig(using persistenceConfig: Config.Persistence): IO[HikariConfig] =
+  private def getHikariConfig(params: Map[String, String]): IO[HikariConfig] =
+    def getParameter(key: String): IO[String] = 
+      IO.fromOption(params.get(key))(IllegalArgumentException(s"Invalid persistence config: key '$key' is missing"))
+
+    def getOptionalParameter(key: String, defaultValue: String): String = 
+      params.get(key).getOrElse(defaultValue)
+
     for
       jdbcUrl          <- getParameter("url")
       user             <- getParameter("user")
@@ -60,11 +65,5 @@ class Driver extends peloton.persistence.Driver:
 
     yield hikariConfig
   end getHikariConfig
-
-  def getParameter(key: String)(using persistenceConfig: Config.Persistence): IO[String] = 
-    IO.fromOption(persistenceConfig.params.get(key))(IllegalArgumentException(s"Invalid persistence config: key '$key' is missing"))
-
-  def getOptionalParameter(key: String, defaultValue: String)(using persistenceConfig: Config.Persistence): String = 
-    persistenceConfig.params.get(key).getOrElse(defaultValue)
 
 end Driver

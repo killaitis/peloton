@@ -2,8 +2,6 @@ object Dependencies {
   val CatsEffectVersion        = "3.5.2"
   val CatsEffectTestingVersion = "1.5.0"
 
-  val MonocleVersion = "3.2.0"
-
   val ScalaTestVersion = "3.2.17"
   val PostgresVersion  = "42.7.0"
   val LogbackVersion   = "1.4.14"
@@ -17,8 +15,6 @@ object Dependencies {
   val PureConfigVersion                = "0.17.4"
   val KryoSerializationVersion         = "1.1.0"
   val QuartzSchedulerVersion           = "2.3.2"
-
-  val H2Version                        = "1.4.200" // don't upgrade this version!
 
   val TestContainersVersion            = "1.18.3"
 }

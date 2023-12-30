@@ -181,10 +181,10 @@ object EventStore:
 
   def make(config: Config): IO[Resource[IO, EventStore]] =
     for
-      persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
-      driver             <- Driver(persistenceConfig.driver)
-      eventSore          <- driver.createEventStore(persistenceConfig)
-    yield eventSore
+      eventStoreConfig  <- IO.fromOption(config.peloton.persistence.eventStore)(new IllegalArgumentException("Invalid peloton config: no event store definition.")) 
+      driver            <- Driver(eventStoreConfig.driver)
+      eventStore        <- driver.createEventStore(eventStoreConfig)
+    yield eventStore
 
   def use[A](config: Config)(f: EventStore ?=> IO[A]): IO[A] = 
     for

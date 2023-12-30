@@ -145,10 +145,10 @@ object DurableStateStore:
 
   def make(config: Config): IO[Resource[IO, DurableStateStore]] =
     for
-      persistenceConfig  <- IO.fromOption(config.peloton.persistence)(new IllegalArgumentException("Invalid peloton config: no persistence section found.")) 
-      driver             <- Driver(persistenceConfig.driver)
-      store              <- driver.createDurableStateStore(persistenceConfig)
-    yield store
+      durableStateStoreConfig  <- IO.fromOption(config.peloton.persistence.durableStateStore)(new IllegalArgumentException("Invalid peloton config: no durable state store definition.")) 
+      driver                   <- Driver(durableStateStoreConfig.driver)
+      durableStateStore        <- driver.createDurableStateStore(durableStateStoreConfig)
+    yield durableStateStore
 
   def use[A](f: DurableStateStore ?=> IO[A]): IO[A] = 
     for

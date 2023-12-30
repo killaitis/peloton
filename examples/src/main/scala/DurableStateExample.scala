@@ -84,7 +84,14 @@ object DurableStateExample extends IOApp.Simple:
       ActorSystem.use: _ ?=>
         import DurableStateCollectorActor.Message.*
 
-        for 
+        for
+                    // Create the database schema of the durable state store if it does 
+                    // not exist. In production environments you probably would not be 
+                    // allowed to create schemas and tables with the given database 
+                    // credentials and create the schema something else. For development 
+                    // and testing this is totally fine.
+          _      <- summon[DurableStateStore].create()
+
                     // Spawn the new actor. If it has already been spawned before, it will 
                     // fetch the latest revision of the state from the durable state store
           actor  <- DurableStateCollectorActor.spawn()

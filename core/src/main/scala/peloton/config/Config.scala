@@ -2,31 +2,43 @@ package peloton.config
 
 import cats.effect.*
 
+// TODO: Waiting for improved Scala 3 support: https://github.com/pureconfig/pureconfig/pull/1599
+
 import pureconfig.*
 import pureconfig.generic.derivation.default.*
 
 import Config.* 
 
-case class Config(
+final case class Config(
   peloton: Peloton = Peloton()
 ) derives ConfigReader
 
 
 object Config:
 
-  case class Peloton(
+  final case class Peloton(
     http: Option[Http] = None,
-    persistence: Option[Persistence] = None
+    persistence: Persistence = Persistence()
   ) derives ConfigReader
 
-  case class Http(
+  final case class Http(
     hostname: String,
     port: Int
   ) derives ConfigReader
   
-  case class Persistence(
+  final case class Persistence(
+    durableStateStore: Option[DurableStateStore] = None,
+    eventStore: Option[EventStore] = None,
+  ) derives ConfigReader
+
+  final case class DurableStateStore(
     driver: String,
-    params: Map[String, String]
+    params: Map[String, String] = Map.empty
+  ) derives ConfigReader
+
+  final case class EventStore(
+    driver: String,
+    params: Map[String, String] = Map.empty
   ) derives ConfigReader
 
   def default(): IO[Config] =

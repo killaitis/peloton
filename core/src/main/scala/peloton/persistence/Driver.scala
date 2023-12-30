@@ -9,8 +9,8 @@ import scala.util.Try
   * A driver is able to create an instances of [[DurableStateStore]] or [[EventStore]] as a `Resource`.
   */
 trait Driver:
-  def createDurableStateStore(persistenceConfig: Config.Persistence): IO[Resource[IO, DurableStateStore]]
-  def createEventStore(persistenceConfig: Config.Persistence): IO[Resource[IO, EventStore]]
+  def createDurableStateStore(config: Config.DurableStateStore): IO[Resource[IO, DurableStateStore]]
+  def createEventStore(config: Config.EventStore): IO[Resource[IO, EventStore]]
 
 object Driver:
   private [persistence] def apply(driverName: String): IO[Driver] =

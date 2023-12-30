@@ -172,6 +172,13 @@ object EventSourcedExample extends IOApp.Simple:
     EventStore.use: _ ?=> 
       ActorSystem.use: _ ?=>
         for
+                    // Create the database schema of the event store if it does 
+                    // not exist. In production environments you probably would not be 
+                    // allowed to create schemas and tables with the given database 
+                    // credentials and create the schema something else. For development 
+                    // and testing this is totally fine.
+          _      <- summon[EventStore].create()
+
                     // Spawn the tracker actor and send some messages
           actor  <- EnergyTrackerActor.spawn()
 
