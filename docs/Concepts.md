@@ -1,12 +1,14 @@
 # Concepts
+
 This document will describe the core concepts used by the Peloton library.
+
 
 ## The Actor System
 
 An actor system is the central hub for actors. It is used to create new actors, manage their lifetime and possibly transport 
 messages to other actor systems on remote machines.
 
-To create a new actor system with default settings:
+You create a new actor system with default settings:
 
 ```scala
 ActorSystem.use: actorSystem ?=> 

@@ -37,25 +37,43 @@ Peloton aims to be a lightweight and playful actor library for Cats Effect. It p
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
 ## Get started
-Add the following dependencies to your `build.sbt` file:
+
+The Peloton library is split into separate packages. This allows you to just include what you really need.
+
+For the core Peloton functionality (which is, in fact, all but database-specific persistence drivers), add the following dependency to your `build.sbt` file:
+
 ```sbt
-libraryDependencies ++= Seq(
-  "de.killaitis" %% "peloton-core"                    % PelotonVersion,
+// See the latest release version on the badge above
+val PelotonVersion = "<version>"
 
-  // PostgreSQL driver for persistent actors (optional)
-  "de.killaitis" %% "peloton-persistence-postgresql"  % PelotonVersion,
+// Peloton base functionality
+libraryDependencies += "de.killaitis" %% "peloton-core" % PelotonVersion
+```
 
-  // CRON-based background scheduling of effects. (optional) 
-  "de.killaitis" %% "peloton-scheduling-cron"         % PelotonVersion 
-)
+In order to use persistent actors (durable state or event sourced), you have to add a Peloton persistence module to your `build.sbt` file that supports your database:
+
+```sbt
+// PostgreSQL driver for Peloton persistent actors
+libraryDependencies += "de.killaitis" %% "peloton-persistence-postgresql" % PelotonVersion
+```
+
+There is also a module that allows for scheduling Cats Effect IO actions in the background using the Quartz CRON scheduler. To use it, add the following dependency to your `build.sbt` file:
+
+```sbt
+// CRON-based background scheduling of Cats Effect actions.
+libraryDependencies += "de.killaitis" %% "peloton-scheduling-cron" % PelotonVersion
 ```
 
 Peloton is only available for Scala 3. Support for older releases of Scala is currently not planned.
 
+
 ## Concepts
-The core concepts of Peloton are described [here](./docs/Concepts.md).
+
+To give an overview of the architecture and terminology of Peloton, refer to the [core concepts of Peloton](./docs/Concepts.md).
+
 
 ## Examples
-For an easyer start, examples can be found in the [examples](./examples/) folder.
 
-You can also check the actors used for [testing](./core/src/test/scala/peloton/actors/)
+For a quick start, examples can be found in the [examples](./examples/) folder.
+
+You can also find additional information about Peloton actors in the [Peloton tests](./core/src/test/scala/peloton/actors/)
