@@ -1,7 +1,7 @@
 # Changelog
 
 ## v0.4.0
-- Added support for event and snapshot retention for event sourced actors. 
+- Added snapshot support for event sourced actors, including purging of deprecated events and snapshots with retention rules.
 - Added `KryoPayloadCodec` as a faster alternative to the standard `JsonPayloadCodec` for the durable state and event store.
 - The `CronScheduler` now has an optional start and end date for the evaluation of CRON expressions.
 - *API CHANGE*: The various versions of `ActorSystem.spawn` have been split to allow for default parameters. The new methods
@@ -9,6 +9,7 @@
   + `spawnActor`
   + `spawnDurableStateActor`
   + `spawnEventSourcedActor`
+- *CONFIG CHANGE*: The persistence config block now is split into separate entities for durable state store and event store.
 
 ## v0.3.0
 - Introduced event sourced actors.
