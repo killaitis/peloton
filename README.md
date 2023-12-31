@@ -67,7 +67,7 @@ libraryDependencies += "de.killaitis" %% "peloton-scheduling-cron" % PelotonVers
 Peloton is only available for Scala 3. Support for older releases of Scala is currently not planned.
 
 
-## Concepts
+## Introduction
 
 To give an overview of the architecture and terminology of Peloton, refer to the [core concepts of Peloton](./docs/Concepts.md).
 
@@ -77,3 +77,8 @@ To give an overview of the architecture and terminology of Peloton, refer to the
 For a quick start, examples can be found in the [examples](./examples/) folder.
 
 You can also find additional information about Peloton actors in the [Peloton tests](./core/src/test/scala/peloton/actors/)
+
+
+## Configuration
+
+An Peloton configuration description and reference can be found [here](./docs/configuration.md).

@@ -1,6 +1,6 @@
-# Concepts
+# Introduction to Peloton
 
-This document will describe the core concepts used by the Peloton library.
+This document will introduce you to the core concepts used by the Peloton library.
 
 
 ## The Actor System
