@@ -10,6 +10,8 @@ import java.net.URI
 
 trait ActorRef[M]:
 
+  def name: String
+  
   def classTag: ClassTag[M] // TODO: this is pretty bad and should be replaced (perhaps with scala.quoted.Type)
 
   def tell(message: M): IO[Unit]

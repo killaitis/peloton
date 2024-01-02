@@ -63,6 +63,8 @@ private [peloton] object EventSourcedActor:
     *   A function that takes the current state of the actor (after applying the current event), the current event and 
     *   the number of events that have been processed (icluding the current event) since the last snapshot. The function
     *   returns a Boolean that indicates if a new snapshot needs to be created.
+    * @retention
+    *   [[Retention]] parameters that control if and how events and snapshots are purged after creating a new snapshot. 
     * @param codec 
     *   A given instance of [[PayloadCodec]] to convert instances of the actor's event type `E` to a byte array and vice versa
     * @param eventStore 

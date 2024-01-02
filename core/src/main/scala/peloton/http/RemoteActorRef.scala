@@ -34,6 +34,7 @@ class RemoteActorRef[M](host: String, port: Int, actorName: String)(using ct: re
 
   private val baseUri = Uri(scheme = Some(Scheme.http), authority = Some(Authority(host = Host.unsafeFromString(host), port = Some(port))))
 
+  override def name: String = actorName
   override def classTag: ClassTag[M] = ct
   override def tell(message: M): IO[Unit] = 
     for

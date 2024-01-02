@@ -26,40 +26,82 @@ import internal.{DurableStateActor, StatefulActor, EventSourcedActor}
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
 
   /**
-    * Spawns a stateful actor
+    * Spawn a new [[Actor]] with simple, stateful behavior. 
+    * 
+    * The actor maintains an internal state which is passed to the message handler an can be updated using
+    * the context's [[Context.setState]] method. The state is kept only in memory and is not persisted in 
+    * any way.
     *
+    * @tparam S 
+    *   The type of the actor's internal state
+    * @tparam M
+    *   The actor's message type
     * @param initialState
+    *   The initial state for the actor.
     * @param initialBehavior
+    *   The initial behavior, i.e., the message handler function. The function takes the current state of the actor, 
+    *   the input (message) and the actor's [[Context]] as parameters and returns a new [[Behavior]], depending on 
+    *   the state and the message. The behavior is evaluated effectful.
     * @param name
+    *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param ClassTag
+    *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
+    *   JVM's type limitations.
     * @return
+    *   An `IO` of [[ActorRef]]
     */
   def spawnActor[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
                   name: Option[String] = None
-                 )(using reflect.ClassTag[M]): IO[ActorRef[M]] = 
+                 )(using ClassTag[M]): IO[ActorRef[M]] = 
     register(StatefulActor.spawn[S, M](initialState, initialBehavior), 
              name
             )
 
   /**
-    * Spawns a durable state actor
+    * Spawns a new [[Actor]] with a durable (persistent) state.
     *
+    * The `DurableStateActor` is connected to a given [[DurableStateStore]] instance. A given `PersistenceId` 
+    * connects this actor instance to a distinct record in the state store, e.g., database row with index key.
+    * 
+    * When the actor spawns, the last known previous actor state is read from the store and used as the 
+    * initial state of the actor. If no previous state was found, a given default state is used.
+    * 
+    * While processing incoming messages, the actor's Behavior can use [[Context.setState]] to update the 
+    * state's representation in the `DurableStateStore`.
+    *
+    * @tparam S 
+    *   The type of the actor's internal state
+    * @tparam M
+    *   The actor's message type
     * @param persistenceId
+    *   A unique identifier of type [[PersistenceId]] that references the persisted state of this actor in the [[DurableStateStore]].
     * @param initialState
+    *   A default/initial state that is used if the actor has never stored its state with the given `persistenceId`.
     * @param initialBehavior
+    *   The initial behavior, i.e., the message handler function. The function takes the current state of the actor, 
+    *   the input (message) and the actor's [[Context]] as parameters and returns a new [[Behavior]], depending on 
+    *   the state and the message. The behavior is evaluated effectful.
     * @param name
-    * @param codec
-    * @param store
+    *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param DurableStateStore
+    *   A given instance of [[DurableStateStore]]
+    * @param PayloadCodec
+    *   A given instance of a [[PayloadCodec]] for the actor's state type `S`. Used to convert the state to a byte array and vice versa.
+    * @param ClassTag
+    *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
+    *   JVM's type limitations.
     * @return
+    *   An `IO` of [[ActorRef]]
     */
   def spawnDurableStateActor[S, M](persistenceId: PersistenceId,
                                    initialState: S,
                                    initialBehavior: Behavior[S, M],
                                    name: Option[String] = None
                                   )(using 
-                                   PayloadCodec[S],
                                    DurableStateStore,
-                                   reflect.ClassTag[M]
+                                   PayloadCodec[S],
+                                   ClassTag[M]
                                   ): IO[ActorRef[M]] =
     register(DurableStateActor.spawn[S, M](persistenceId, 
                                            initialState, 
@@ -69,18 +111,65 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
             )
 
   /**
-    * Spawns an event sourced actor
+    * Spawn a new [[Actor]] with event sourced behavior. 
+    * 
+    * The message processing of the event sourced actor consists of two phases:
+    * 
+    * 1. the message handler: 
+    *   - accepts the incoming messages of type `M`
+    *   - uses the provided actor context to possibly reply to the sender (e.g. in case of an ASK pattern)
+    *   - perform other actions that *do not* modify the state of the actor
+    *   - returns an [[EventAction]] that determines if the message has to be converted into an event (which 
+    *     is then written to the event store)
+    * 
+    * 2. the event handler:
+    *   - accepts incoming event (from the message handler or the event store)
+    *   - implements the business logic to modify the actor state
+    *   - returns the new state
+    * 
+    * So, in short, the message handler is mainly responsible to convert messages to events (which are then 
+    * written to the event store) while the event handler is responsible to update the actor state.
+    * 
+    * On start, an event sourced actor will read all existing events (for the given persistence ID) from 
+    * the event store and replay them using the event handler. This leaves the actor in the same state
+    * as before the last shutdown.
+    * 
+    * Unlike other actor types, the event sourced actor is not allowed to change its behavior. It will always
+    * use a behavior of type [[EventSourcedBehavior]]
     *
+    * @tparam S 
+    *   The type of the actor's internal state
+    * @tparam M
+    *   The actor's message type
+    * @tparam E
+    *   The actor's event type
     * @param persistenceId
+    *   A unique identifier of type [[PersistenceId]] that references the persisted state of this actor in the [[EventStore]].
     * @param initialState
+    *   The initial state for the actor.
     * @param messageHandler
+    *   The message handler of type [[MessageHandler]]
     * @param eventHandler
+    *   The event handler of type [[EventHandler]]
     * @param snapshotPredicate
-    * @param retention
+    *   A function that takes the current state of the actor (after applying the current event), the current event and 
+    *   the number of events that have been processed (icluding the current event) since the last snapshot. The function
+    *   returns a Boolean that indicates if a new snapshot needs to be created.
+    * @retention
+    *   [[Retention]] parameters that control if and how events and snapshots are purged after creating a new snapshot. 
     * @param name
-    * @param eventStore
-    * @param codec
+    *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param EventStore
+    *   A given instance of [[EventStore]]
+    * @param PayloadCodec
+    *   A given instance of a [[PayloadCodec]] for the actor's event type `E`. Used to convert events to a byte array and vice versa.
+    * @param PayloadCodec
+    *   A given instance of a [[PayloadCodec]] for the actor's state type `S`. Used to convert the state to a byte array and vice versa.
+    * @param ClassTag
+    *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
+    *   JVM's type limitations.
     * @return
+    *   An `IO` of [[ActorRef]]
     */
   def spawnEventSourcedActor[S, M, E](persistenceId: PersistenceId,
                                       initialState: S,
@@ -93,7 +182,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                                       EventStore,
                                       PayloadCodec[E],
                                       PayloadCodec[S],
-                                      reflect.ClassTag[M]
+                                      ClassTag[M]
                                      ): IO[ActorRef[M]] =
     register(EventSourcedActor.spawn[S, M, E](persistenceId, 
                                               initialState, 
@@ -106,13 +195,17 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
             )
 
   /**
-    * Obtains the ActorRef for a given actor name
+    * Obtains the [[ActorRef]] to a local actor in this actor system.
     *
     * @param name
-    * @param ct
+    *   The unique name of the actor in this actor system. 
+    * @param ClassTag
+    *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
+    *   JVM's type limitations.
     * @return
+    *   An `IO` of [[ActorRef]] for the given actor name if it exists or a failed `IO` otherwise.
     */
-  def actorRef[M](name: String)(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] =
+  def actorRef[M](name: String)(using ct: ClassTag[M]): IO[ActorRef[M]] =
     for 
       refs       <- actorRefs.get
       ref        <- IO.fromOption(refs.get(name))(new NoSuchElementException(s"actor not found: $name"))
@@ -124,11 +217,16 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     yield ref.asInstanceOf[ActorRef[M]]
 
   /**
-    * Obtains the ActorRef for a given remote actor URL
+    * Obtains the [[ActorRef]] to a remote actor on a possibly different machine.
     *
     * @param uri
-    * @param ct
+    *   A URI, referencing the actor on the remote actor system. Must have the format `peloton://<host>:<port>/<actor_name>`, 
+    *   e.g., `peloton://192.168.100.6:5000/my_actor`.
+    * @param ClassTag
+    *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
+    *   JVM's type limitations.
     * @return
+    *   An `IO` of [[ActorRef]] for the given URI.
     */
   def remoteActorRef[M](uri: URI)(using ct: reflect.ClassTag[M]): IO[ActorRef[M]] =
     for
@@ -142,8 +240,10 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
   /**
     * Terminates an actor
     *
-    * @param actorRef A reference to the actor to terminate
-    * @return `IO[Unit]`
+    * @param actorRef 
+    *   A reference to the actor to terminate
+    * @return 
+    *   `IO[Unit]`
     */
   def terminate(actorRef: ActorRef[?]): IO[Unit] = 
     actorRef.terminate
@@ -154,7 +254,8 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     * This will also terminate all running actors. If an actor is currently processing a message, 
     * termination will wait for the message handler to finish.
     *
-    * @return `IO[Unit]`
+    * @return
+    *   `IO[Unit]`
     */
   def shutdown: IO[Unit] = 
     for 
@@ -182,23 +283,33 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                           ct: reflect.ClassTag[M]
                          ): IO[ActorRef[M]] = 
     actorRefs.evalModify: refs =>
-      for
-        name     <- maybeName match
-                      case Some(name) => IO.pure(name)
-                      case None       => UUIDGen.randomString[IO]
-        _        <- IO.assert(!refs.contains(name))(IllegalArgumentException(s"An actor with name '$name' already exists!"))
-        actor    <- spawnF
-        actorRef  = new ActorRef[M]:
-                      override def classTag = ct
-                      override def tell(message: M): IO[Unit] = actor.tell(message)
-                      override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = actor.ask(message)
-                      override def terminate: IO[Unit] = 
-                        actorRefs.evalUpdate: refs =>
-                          for
-                            _ <- if refs.contains(name) then actor.terminate else IO.unit
-                          yield (refs - name)
 
-      yield (refs + (name -> actorRef), actorRef)
+      def uniqueActorName: IO[String] = 
+        for 
+          nameProposal <- UUIDGen.randomString[IO]
+          name         <- if refs.contains(nameProposal) 
+                          then uniqueActorName 
+                          else IO.pure(nameProposal)
+        yield name
+
+      for
+        actorName  <- maybeName match
+                        case Some(name) => IO.pure(name)
+                        case None       => uniqueActorName
+        _          <- IO.assert(!refs.contains(actorName))(IllegalArgumentException(s"An actor with name '$actorName' already exists!"))
+        actor      <- spawnF
+        actorRef    = new ActorRef[M]:
+                        override def name = actorName
+                        override def classTag = ct
+                        override def tell(message: M): IO[Unit] = actor.tell(message)
+                        override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = actor.ask(message)
+                        override def terminate: IO[Unit] = 
+                          actorRefs.evalUpdate: refs =>
+                            for
+                              _ <- if refs.contains(actorName) then actor.terminate else IO.unit
+                            yield (refs - actorName)
+
+      yield (refs + (actorName -> actorRef), actorRef)
   end register
 
 end ActorSystem
