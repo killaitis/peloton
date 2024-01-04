@@ -1,5 +1,8 @@
 # Changelog
 
+## (upcoming)
+- Dependency updates
+
 ## v0.4.0
 - Added snapshot support for event sourced actors, including purging of deprecated events and snapshots with retention rules.
 - Added `KryoPayloadCodec` as a faster alternative to the standard `JsonPayloadCodec` for the durable state and event store.
