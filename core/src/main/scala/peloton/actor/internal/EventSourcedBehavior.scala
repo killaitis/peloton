@@ -1,36 +1,24 @@
-package peloton.actor
+package peloton.actor.internal
 
+import peloton.actor.Behavior
+import peloton.actor.ActorContext
+import peloton.persistence.EventAction
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.Event
 import peloton.persistence.EventStore
 import peloton.persistence.Retention
-import peloton.actor.MessageHandler
-import peloton.actor.EventHandler
+import peloton.persistence.Snapshot
+import peloton.persistence.MessageHandler
+import peloton.persistence.EventHandler
+import peloton.persistence.SnapshotPredicate
 
 import cats.effect.IO
 import cats.effect.Ref
 import cats.effect.Clock
-import peloton.persistence.Snapshot
-
-enum EventAction[+E]:
-  case Ignore
-  case Persist(event: E)
-
-object EventAction:
-  def ignore[E]: IO[EventAction[E]] = IO.pure(EventAction.Ignore)
-  def persist[E](event: E): IO[EventAction[E]] = IO.pure(EventAction.Persist(event))
 
 
-type MessageHandler[S, M, E] = (state: S, message: M, context: ActorContext[S, M]) => IO[EventAction[E]]
-type EventHandler[S, E] = (state: S, event: E) => S
-type SnapshotPredicate[S, E] = (state: S, event: E, numEvents: Int) => Boolean
-
-object SnapshotPredicate:
-  def noSnapshots[S, E]: SnapshotPredicate[S, E] = (_, _, _) => false
-  def snapshotEvery[S, E](n: Int): SnapshotPredicate[S, E] = (_, _, count) => count % n == 0
-
-private [peloton] class EventSourcedBehavior[S, M, E](
+private [internal] class EventSourcedBehavior[S, M, E](
           persistenceId: PersistenceId,
           messageHandler: MessageHandler[S, M, E],
           eventHandler: EventHandler[S, E],

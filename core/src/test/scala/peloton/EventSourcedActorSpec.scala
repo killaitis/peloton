@@ -1,8 +1,11 @@
 package peloton
 
 import peloton.actor.ActorSystem
-import peloton.actor.SnapshotPredicate
-import peloton.persistence.*
+import peloton.persistence.PersistenceId
+import peloton.persistence.Event
+import peloton.persistence.EventStore
+import peloton.persistence.Snapshot
+import peloton.persistence.SnapshotPredicate
 
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec

@@ -5,7 +5,7 @@ package peloton.persistence
   *
   * @tparam A the type of the payload
   * @param payload the payload, i.e., the serialize actor message.
-  * @param timestamp the timestamp when the event was written
+  * @param timestamp the timestamp (UNIX epoch milliseconds) when the event was written
   */
 final case class Snapshot[A](
   payload: A,

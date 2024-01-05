@@ -1,5 +1,6 @@
 package peloton.persistence
 
+
 opaque type PersistenceId = String
 
 extension (id: PersistenceId)

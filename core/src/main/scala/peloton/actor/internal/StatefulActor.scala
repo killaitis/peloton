@@ -1,7 +1,7 @@
 package peloton.actor.internal
 
 import peloton.actor.Actor
-import peloton.actor.Actor.*
+import peloton.actor.Actor.CanAsk
 import peloton.actor.ActorContext
 import peloton.actor.Behavior
 
@@ -12,7 +12,7 @@ import cats.implicits.*
 
 import scala.concurrent.duration.FiniteDuration
 
-private [peloton] object StatefulActor:
+private [actor] object StatefulActor:
 
   /**
     * Spawn a new [[Actor]] with simple, stateful behavior. 

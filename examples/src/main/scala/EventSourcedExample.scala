@@ -2,15 +2,15 @@ import peloton.actor.Actor.CanAsk
 import peloton.actor.Actor.canAsk
 import peloton.actor.ActorContext
 import peloton.actor.ActorSystem
-import peloton.actor.EventAction
+import peloton.persistence.EventAction
 import peloton.persistence.EventStore
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.KryoPayloadCodec
+import peloton.persistence.Retention
+import peloton.persistence.SnapshotPredicate
 
 import cats.effect.{IO, IOApp}
-import peloton.actor.SnapshotPredicate
-import peloton.persistence.Retention
 
 
 // An actor that tracks body energy. Eating or drinking increases the 

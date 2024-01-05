@@ -2,6 +2,7 @@ package peloton.persistence
 
 import cats.effect.IO
 
+
 /**
   * An encoder and decoder type class for a given payload type `A`
   */

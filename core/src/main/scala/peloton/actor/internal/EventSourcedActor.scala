@@ -4,16 +4,15 @@ import peloton.actor.Actor
 import peloton.actor.Actor.*
 import peloton.actor.ActorContext
 import peloton.actor.Behavior
-import peloton.actor.EventSourcedBehavior
-import peloton.actor.MessageHandler
-import peloton.actor.EventHandler
-import peloton.actor.SnapshotPredicate
 import peloton.persistence.PersistenceId
 import peloton.persistence.EventStore
 import peloton.persistence.PayloadCodec
 import peloton.persistence.Snapshot
 import peloton.persistence.Event
 import peloton.persistence.Retention
+import peloton.persistence.MessageHandler
+import peloton.persistence.EventHandler
+import peloton.persistence.SnapshotPredicate
 
 import cats.effect.*
 import cats.effect.std.Queue
@@ -22,7 +21,7 @@ import cats.implicits.*
 
 import scala.concurrent.duration.FiniteDuration
 
-private [peloton] object EventSourcedActor:
+private [actor] object EventSourcedActor:
 
   /**
     * Spawn a new [[Actor]] with event sourced behavior. 

@@ -10,6 +10,7 @@ import io.circe.generic.semiauto.*
 import scala.deriving.Mirror
 import java.nio.charset.StandardCharsets
 
+
 /**
   * A [[PayloadCodec]] typeclass implementation for type `A` that uses Json encoding/decoding under the hood
   *

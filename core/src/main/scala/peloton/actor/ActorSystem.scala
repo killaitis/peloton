@@ -1,26 +1,30 @@
 package peloton.actor
 
 import peloton.actor.Actor.CanAsk
+import peloton.actor.internal.{DurableStateActor, StatefulActor, EventSourcedActor}
 import peloton.http.ActorSystemServer
-import peloton.utils.*
+import peloton.http.RemoteActorRef
+import peloton.config.Config
+import peloton.utils.assert
 import peloton.persistence.PersistenceId
 import peloton.persistence.PayloadCodec
 import peloton.persistence.DurableStateStore
 import peloton.persistence.EventStore
 import peloton.persistence.Retention
-import peloton.config.Config
-import peloton.http.RemoteActorRef
+import peloton.persistence.MessageHandler
+import peloton.persistence.EventHandler
+import peloton.persistence.SnapshotPredicate
 
 import cats.effect.*
 import cats.implicits.*
 import cats.effect.std.AtomicCell
 import cats.effect.std.UUIDGen
+
 import com.comcast.ip4s.*
 
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import java.net.URI
-import internal.{DurableStateActor, StatefulActor, EventSourcedActor}
 
 
 class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
@@ -352,12 +356,34 @@ object ActorSystem:
 
     yield Resource.make(acquire)(release)
 
+  /**
+   * Wraps a given function into an [[ActorSystem]] resource bracket, 
+   * i.e., creates an actor system, applies the function and releases 
+   * the actor system.
+   * 
+   * The actor system will be created using the Peloton default configuration.
+   * 
+   * @param f
+   *   Á function that takes an implicit/given instance of [[ActorSystem]] 
+   *   as argument and returns an `IO` of any type `A`.
+   */
   def use[A](f: ActorSystem ?=> IO[A]): IO[A] = 
     for
       actorSystemRes <- ActorSystem.make()
       retval         <- actorSystemRes.use { case given ActorSystem => f }
     yield retval
 
+  /**
+   * Wraps a given function into an [[ActorSystem]] resource bracket, 
+   * i.e., creates an actor system, applies the function and releases 
+   * the actor system.
+   * 
+   * @param config
+   *   The Peloton configuration used to create the actor system.
+   * @param f
+   *   Á function that takes an implicit/given instance of [[ActorSystem]] 
+   *   as argument and returns an `IO` of any type `A`.
+   */
   def use[A](config: Config)(f: ActorSystem ?=> IO[A]): IO[A] = 
     for
       actorSystemRes <- ActorSystem.make(config)

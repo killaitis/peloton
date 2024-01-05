@@ -2,6 +2,7 @@
 
 ## (upcoming)
 - Dependency updates
+- *API CHANGE*: Moved several classes related to event sourced actors from package `actor` to `persistence` for more consistency. Unfortunately, this breaks API compatibility.
 
 ## v0.4.0
 - Added snapshot support for event sourced actors, including purging of deprecated events and snapshots with retention rules.

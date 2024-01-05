@@ -4,6 +4,7 @@ import peloton.utils.Kryo
 
 import cats.effect.IO
 
+
 /**
   * A [[PayloadCodec]] typeclass implementation for type `A` that uses Kryo encoding/decoding under the hood
   *

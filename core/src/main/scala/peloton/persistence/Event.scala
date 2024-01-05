@@ -1,10 +1,10 @@
 package peloton.persistence
 
 /**
-  * A persistent actor event/message.
+  * A container to store the events of an event sourced actor as its payload.
   *
   * @tparam A the type of the payload
-  * @param payload the payload, i.e., the serialize actor message.
+  * @param payload the typed (unencoded) payload
   * @param timestamp the timestamp when the event was written
   */
 final case class Event[A](

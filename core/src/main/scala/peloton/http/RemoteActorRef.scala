@@ -1,7 +1,7 @@
 package peloton.http
 
-import peloton.actor.ActorRef
 import peloton.actor.Actor.CanAsk
+import peloton.actor.ActorRef
 
 import cats.effect.IO
 

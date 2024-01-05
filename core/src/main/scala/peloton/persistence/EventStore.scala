@@ -4,6 +4,7 @@ import peloton.config.Config
 
 import cats.effect.IO
 import cats.effect.Resource
+
 import fs2.Stream
 
 trait EventStore:

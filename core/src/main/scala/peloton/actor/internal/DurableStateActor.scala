@@ -1,7 +1,7 @@
 package peloton.actor.internal
 
 import peloton.actor.Actor
-import peloton.actor.Actor.*
+import peloton.actor.Actor.CanAsk
 import peloton.actor.ActorContext
 import peloton.actor.Behavior
 import peloton.persistence.DurableState
@@ -17,7 +17,7 @@ import cats.implicits.*
 import scala.concurrent.duration.FiniteDuration
 
 
-private [peloton] object DurableStateActor:
+private [actor] object DurableStateActor:
 
   /**
     * Spawns a new [[Actor]] with a durable (persistent) state.

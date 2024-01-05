@@ -6,6 +6,6 @@ package peloton.persistence
   * @tparam A the type of the payload
   * @param payload the payload, i.e., the state of an actor that os to be persisted.
   * @param revision the revision of the payload
-  * @param timestamp the timestamp when this revision was written
+  * @param timestamp the timestamp when this revision was written (in UNIX epoch milliseconds)
   */
 final case class DurableState[A](payload: A, revision: Long, timestamp: Long)
