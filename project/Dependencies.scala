@@ -1,5 +1,5 @@
 object Dependencies {
-  val CatsEffectVersion        = "3.5.2"
+  val CatsEffectVersion        = "3.5.3"
   val CatsEffectTestingVersion = "1.5.0"
 
   val ScalaTestVersion = "3.2.17"
