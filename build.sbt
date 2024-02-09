@@ -1,6 +1,6 @@
 import Dependencies._
 
-lazy val Benchmark = config("benchmark") extend Test
+lazy val Benchmark = config("benchmark") extend Test describedAs "Benchmark tests"
 
 ThisBuild / version := {
   val Tag = "refs/tags/(.*)".r
@@ -48,10 +48,6 @@ lazy val core = (project in file("core"))
       // Cats + Cats Effect
       "org.typelevel" %% "cats-effect"                    % CatsEffectVersion,
 
-      // Monocle
-      // "dev.optics" %% "monocle-core"                      % MonocleVersion,
-      // "dev.optics" %% "monocle-macro"                     % MonocleVersion,
-
       // Circe Json
       "io.circe" %% "circe-generic"                       % CirceVersion,
       "io.circe" %% "circe-core"                          % CirceVersion,
@@ -97,6 +93,28 @@ lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
     )
   )
 
+lazy val `persistence-cassandra` = (project in file("persistence/cassandra"))
+  .dependsOn(core)
+  .settings(
+    name                      := "peloton-persistence-cassandra",
+    description               := "Peloton persistence driver for Apache Cassandra 4.x",
+    
+    publishTo                 := sonatypePublishToBundle.value,
+    publishMavenStyle         := true,
+    
+    Test / parallelExecution  := false,
+
+    libraryDependencies ++= Seq(
+      "co.fs2" %% "fs2-core"                  % Fs2Version,
+      // "co.fs2" %% "fs2-reactive-streams"      % Fs2Version,
+      "org.reactivestreams" % "reactive-streams-flow-adapters" % "1.0.2",
+
+
+      // Cassandra Java Driver
+      "com.datastax.oss" % "java-driver-core" % CassandraJavaDriverVersion
+    )
+  )
+
 lazy val `scheduling-cron` = (project in file("scheduling/cron"))
   .dependsOn(core)
   .settings(
@@ -127,6 +145,7 @@ lazy val `integration-tests` = (project in file("integration-tests"))
   .dependsOn(
     core, 
     `persistence-postgresql`, 
+    `persistence-cassandra`, 
     `scheduling-cron`
   )
   .configs(Benchmark)
@@ -137,8 +156,11 @@ lazy val `integration-tests` = (project in file("integration-tests"))
     publish / skip            := true,
 
     Test / parallelExecution  := false,
+
+    // Skip all benchmarks from regular integration tests
     Test / testOptions        := Seq(Tests.Argument("-l", "Benchmark")),
 
+    // Create a separate benchmark suite (sbt integration-tests/testOnly -- -n Benchmark)
     inConfig(Benchmark)(Defaults.testTasks),
     Benchmark / parallelExecution := false,
     Benchmark / testOptions       := Seq(Tests.Argument("-n", "Benchmark")),
@@ -151,7 +173,8 @@ lazy val `integration-tests` = (project in file("integration-tests"))
       "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test,
       "org.postgresql" % "postgresql"                     % PostgresVersion           % Test,
       "org.testcontainers" % "testcontainers"             % TestContainersVersion     % Test,
-      "org.testcontainers" % "postgresql"                 % TestContainersVersion     % Test
+      "org.testcontainers" % "postgresql"                 % TestContainersVersion     % Test,
+      "org.testcontainers" % "cassandra"                  % TestContainersVersion     % Test
     )
   )
 

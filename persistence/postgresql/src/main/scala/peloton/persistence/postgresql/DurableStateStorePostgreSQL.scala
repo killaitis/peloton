@@ -4,6 +4,7 @@ import peloton.persistence.*
 import peloton.persistence.DurableStateStore.*
 
 import cats.effect.IO
+
 import doobie.*
 import doobie.implicits.*
 

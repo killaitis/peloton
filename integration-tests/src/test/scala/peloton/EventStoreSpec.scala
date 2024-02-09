@@ -71,7 +71,7 @@ abstract class EventStoreSpec
         _      <- store.writeEvent(persistenceId, event1)
         _      <- store.writeEvent(persistenceId, event2)
         _      <- store.writeEvent(persistenceId, event3)
-        _      <- store.readEvents[MyState, MyEvent](persistenceId, false)
+        _      <- store.readEvents[MyState, MyEvent](persistenceId, startFromLatestSnapshot = false)
                     .compile.toList.asserting { 
                     _ shouldBe List(event1, event2, event3)
                   }
