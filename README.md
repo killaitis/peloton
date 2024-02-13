@@ -69,7 +69,7 @@ Peloton is only available for Scala 3. Support for older releases of Scala is cu
 
 ## Introduction
 
-To give an overview of the architecture and terminology of Peloton, refer to the [core concepts of Peloton](./docs/Concepts.md).
+To give an overview of the architecture and terminology of Peloton, refer to the [introduction to Peloton](./docs/introduction.md).
 
 
 ## Examples
