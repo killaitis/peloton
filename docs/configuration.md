@@ -119,12 +119,14 @@ connection pool.
 `peloton.persistence.cassandra.Driver`
 
 *Parameters*:
-| Name                | Required?          | Description |
-| ------------------- | ------------------ | ----------- |
-| `contact-points`    | :white_check_mark: | a comma-separated list of contact point addresses (format: "host:port") |
-| `datacenter`        | :white_check_mark: | the name of the datacenter to connect to |
-| `user`              | :white_check_mark: | The name of the database user account |
-| `password`          | :white_check_mark: | The password of the database user account|
+| Name                   | Required?          | Description |
+| ---------------------- | ------------------ | ----------- |
+| `contact-points`       | :white_check_mark: | a comma-separated list of contact point addresses (format: "host:port") |
+| `datacenter`           | :white_check_mark: | the name of the datacenter to connect to |
+| `user`                 | :white_check_mark: | The name of the database user account |
+| `password`             | :white_check_mark: | The password of the database user account|
+| `replication-strategy` |                    | The keyspace replication strategy. Default: `SimpleStrategy` |
+| `replication-factor`   |                    | The keyspace replication factor. Default: 1 |
 
 
 ## Peloton remote actor configuration

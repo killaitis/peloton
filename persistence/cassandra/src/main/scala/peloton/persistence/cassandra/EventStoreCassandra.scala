@@ -19,11 +19,19 @@ import java.util.UUID
 
 
 private [cassandra] class EventStoreCassandra(cqlSession: CqlSession, 
-                                              statementCache: AtomicCell[IO, Map[String, PreparedStatement]]
+                                              statementCache: AtomicCell[IO, Map[String, PreparedStatement]],
+                                              replicationStrategy: String,
+                                              replicationFactor: Int
                                              ) extends EventStore:
 
   override def create(): IO[Unit] = 
-    execute("create keyspace if not exists peloton with replication = {'class': 'SimpleStrategy', 'replication_factor' : 1}") >>
+    execute(s"""
+              create keyspace if not exists peloton 
+              with replication = { 
+                'class': '$replicationStrategy', 
+                'replication_factor' : $replicationFactor
+              }
+            """) >>
     execute("""
               create table if not exists peloton.eventstore (
                 persistence_id  text,
@@ -61,9 +69,9 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
       """, persistenceId.toString(), UUID.fromString(snapshot)
     )
     .map: row => 
-      EncodedEvent(payload   = row.getBytesUnsafe("payload").array(),
-                  timestamp  = row.getLong("timestamp"),
-                  isSnapshot = row.getBoolean("is_snapshot")
+      EncodedEvent(payload    = row.getBytesUnsafe("payload").array(),
+                   timestamp  = row.getLong("timestamp"),
+                   isSnapshot = row.getBoolean("is_snapshot")
                   )
 
   private def readAllEvents(persistenceId: PersistenceId): Stream[IO, EncodedEvent] =
@@ -75,9 +83,9 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
        """, persistenceId.toString()
     )
       .map: row => 
-        EncodedEvent(payload   = row.getBytesUnsafe("payload").array(),
-                    timestamp  = row.getLong("timestamp"),
-                    isSnapshot = row.getBoolean("is_snapshot")
+        EncodedEvent(payload    = row.getBytesUnsafe("payload").array(),
+                     timestamp  = row.getLong("timestamp"),
+                     isSnapshot = row.getBoolean("is_snapshot")
                     )
 
 

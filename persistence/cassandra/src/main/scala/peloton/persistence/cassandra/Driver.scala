@@ -27,27 +27,35 @@ class Driver extends peloton.persistence.Driver:
 
   override def createEventStore(config: Config.EventStore): IO[Resource[IO, EventStore]] =
     for
-      cqlSession     <- createCqlSession(config.params)
-      statementCache <- AtomicCell[IO].of(Map.empty[String, PreparedStatement])
-      eventStore      = cqlSession.map(EventStoreCassandra(_, statementCache))
+      cqlSession           <- createCqlSession(config.params)
+      statementCache       <- AtomicCell[IO].of(Map.empty[String, PreparedStatement])
+      replicationStrategy   = getOptionalParameter(config.params, "replication-strategy", "SimpleStrategy")
+      replicationFactor     = getOptionalParameter(config.params, "replication-factor", "1").toIntOption.getOrElse(1)
+      eventStore            = cqlSession.map: session => 
+                                EventStoreCassandra(
+                                  cqlSession          = session, 
+                                  statementCache      = statementCache,
+                                  replicationStrategy = replicationStrategy,
+                                  replicationFactor   = replicationFactor
+                                )            
     yield eventStore
 
+  private def getParameter(params: Map[String, String], key: String): IO[String] = 
+    IO.fromOption(params.get(key))(IllegalArgumentException(s"Invalid persistence config: key '$key' is missing"))
+
+  private def getOptionalParameter(params: Map[String, String], key: String, defaultValue: String): String = 
+    params.get(key).getOrElse(defaultValue)
+
   private def createCqlSession(params: Map[String, String]): IO[Resource[IO, CqlSession]] = 
-    def getParameter(key: String): IO[String] = 
-      IO.fromOption(params.get(key))(IllegalArgumentException(s"Invalid persistence config: key '$key' is missing"))
-
-    def getOptionalParameter(key: String, defaultValue: String): String = 
-      params.get(key).getOrElse(defaultValue)
-
     for 
-      username       <- getParameter("user")
-      password       <- getParameter("password")
-      datacenter     <- getParameter("datacenter")
-      contactPoints   = getOptionalParameter("contact-points", "")
-                        .split(",").toList
-                        .map(_.split(":").toList)
-                        .collect { case host :: port :: Nil => InetSocketAddress(host, port.toInt) }
-                        .asJava
+      username       <- getParameter(params, "user")
+      password       <- getParameter(params, "password")
+      datacenter     <- getParameter(params, "datacenter")
+      contactPoints   = getOptionalParameter(params, "contact-points", "")
+                          .split(",").toList
+                          .map(_.split(":").toList)
+                          .collect { case host :: port :: Nil => InetSocketAddress(host, port.toInt) }
+                          .asJava
     yield 
       Resource.fromAutoCloseable(IO(
         CqlSession
