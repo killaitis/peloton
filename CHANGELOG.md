@@ -1,7 +1,8 @@
 # Changelog
 
 ## (upcoming)
-- Dependency updates
+- Updated library dependencies.
+- Added Cassandra support for the Peloton persistence layer. This is currently still regarded experimental and should not be used in production environments. 
 - *API CHANGE*: Moved several classes related to event sourced actors from package `actor` to `persistence` for more consistency. Unfortunately, this breaks API compatibility.
 
 ## v0.4.0
@@ -22,7 +23,7 @@
 - *API CHANGE*: `ActorContext.respond` has been renamed to `ActorContext.reply`.
 
 ## v0.2.1
-- Dependency updates 
+- Updated library dependencies.
 - Switched releases to new artifact versioning scheme. Artifacts now omit the `v` in the version string (e.g. `peloton-core_3-0.2.1`).
 
 ## v0.2.0

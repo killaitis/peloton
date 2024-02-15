@@ -113,6 +113,20 @@ connection pool.
 | `maximum-pool-size` |                    | The maximum size of the Hikari connection pool. Default: `10` |
 
 
+#### Cassandra (experimental)
+
+*Driver name*:
+`peloton.persistence.cassandra.Driver`
+
+*Parameters*:
+| Name                | Required?          | Description |
+| ------------------- | ------------------ | ----------- |
+| `contact-points`    | :white_check_mark: | a comma-separated list of contact point addresses (format: "host:port") |
+| `datacenter`        | :white_check_mark: | the name of the datacenter to connect to |
+| `user`              | :white_check_mark: | The name of the database user account |
+| `password`          | :white_check_mark: | The password of the database user account|
+
+
 ## Peloton remote actor configuration
 
 By default, Peloton actor systems are local-only and do not provide access to their actors via HTTP. 

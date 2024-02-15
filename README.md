@@ -53,8 +53,9 @@ libraryDependencies += "de.killaitis" %% "peloton-core" % PelotonVersion
 In order to use persistent actors (durable state or event sourced), you have to add a Peloton persistence module to your `build.sbt` file that supports your database:
 
 ```sbt
-// PostgreSQL driver for Peloton persistent actors
+// Optional drivers for Peloton persistent actors
 libraryDependencies += "de.killaitis" %% "peloton-persistence-postgresql" % PelotonVersion
+libraryDependencies += "de.killaitis" %% "peloton-persistence-cassandra" % PelotonVersion
 ```
 
 There is also a module that allows for scheduling Cats Effect IO actions in the background using the Quartz CRON scheduler. To use it, add the following dependency to your `build.sbt` file:
