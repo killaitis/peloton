@@ -15,8 +15,10 @@ object Dependencies {
   val PureConfigVersion               = "0.17.6"
   val KryoSerializationVersion        = "1.2.0"
   val QuartzSchedulerVersion          = "2.3.2"
+  val RSFlowAdaptersVersion           = "1.0.2"
 
   val PostgresVersion                 = "42.7.0"
+  val MySQLVersion                    = "8.3.0"
   val CassandraJavaDriverVersion      = "4.17.0"
 
   val TestContainersVersion           = "1.18.3"

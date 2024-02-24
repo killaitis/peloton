@@ -88,8 +88,32 @@ lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
 
     libraryDependencies ++= Seq(
       // Doobie
-      "org.tpolecat" %% "doobie-core"                     % DoobieVersion,
-      "org.tpolecat" %% "doobie-hikari"                   % DoobieVersion,
+      "org.tpolecat" %% "doobie-core"   % DoobieVersion,
+      "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
+
+      // PostgreSQL JDBC driver
+      "org.postgresql" % "postgresql"   % PostgresVersion
+    )
+  )
+
+lazy val `persistence-mysql` = (project in file("persistence/mysql"))
+  .dependsOn(core)
+  .settings(
+    name                      := "peloton-persistence-mysqll",
+    description               := "Peloton persistence driver for MySQL / MariaDB",
+    
+    publishTo                 := sonatypePublishToBundle.value,
+    publishMavenStyle         := true,
+    
+    Test / parallelExecution  := false,
+
+    libraryDependencies ++= Seq(
+      // Doobie
+      "org.tpolecat" %% "doobie-core"   % DoobieVersion,
+      "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
+
+      // MySQL JDBC driver
+      "com.mysql" % "mysql-connector-j" % MySQLVersion
     )
   )
 
@@ -107,7 +131,7 @@ lazy val `persistence-cassandra` = (project in file("persistence/cassandra"))
     libraryDependencies ++= Seq(
       "co.fs2" %% "fs2-core"                  % Fs2Version,
       // "co.fs2" %% "fs2-reactive-streams"      % Fs2Version,
-      "org.reactivestreams" % "reactive-streams-flow-adapters" % "1.0.2",
+      "org.reactivestreams" % "reactive-streams-flow-adapters" % RSFlowAdaptersVersion,
 
 
       // Cassandra Java Driver
@@ -137,15 +161,16 @@ lazy val `scheduling-cron` = (project in file("scheduling/cron"))
       // Testing
       "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
       "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
-      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Runtime,
+      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test,
     )
   )
 
 lazy val `integration-tests` = (project in file("integration-tests"))
   .dependsOn(
     core, 
-    `persistence-postgresql`, 
-    `persistence-cassandra`, 
+    `persistence-postgresql`,
+    `persistence-mysql`,
+    `persistence-cassandra`,
     `scheduling-cron`
   )
   .configs(Benchmark)
@@ -171,9 +196,9 @@ lazy val `integration-tests` = (project in file("integration-tests"))
       "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
       "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
       "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test,
-      "org.postgresql" % "postgresql"                     % PostgresVersion           % Test,
       "org.testcontainers" % "testcontainers"             % TestContainersVersion     % Test,
       "org.testcontainers" % "postgresql"                 % TestContainersVersion     % Test,
+      "org.testcontainers" % "mysql"                      % TestContainersVersion     % Test,
       "org.testcontainers" % "cassandra"                  % TestContainersVersion     % Test
     )
   )

@@ -2,7 +2,8 @@
 
 ## (upcoming)
 - Updated library dependencies.
-- Added Cassandra support for the Peloton persistence layer. This is currently still regarded experimental and should not be used in production environments. 
+- Added experimental MySQL support for the Peloton persistence layer.
+- Added experimental Cassandra support for the Peloton persistence layer.
 - *API CHANGE*: Moved several classes related to event sourced actors from package `actor` to `persistence` for more consistency. Unfortunately, this breaks API compatibility.
 
 ## v0.4.0
