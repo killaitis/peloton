@@ -17,12 +17,9 @@ object PostgreSQLSpec:
   }
 
   lazy val testContainerConfig: Config =
-    val dbHost = container.getHost()
-    val dbPort = container.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT)
-    val dbName = container.getDatabaseName()
     val dbUsername = container.getUsername()
     val dbPassword = container.getPassword()
-    val jdbcUrl = s"jdbc:postgresql://$dbHost:$dbPort/$dbName"
+    val jdbcUrl = container.getJdbcUrl()
 
     Config(
       Peloton(
@@ -46,3 +43,5 @@ object PostgreSQLSpec:
         )
       )
     )
+
+end PostgreSQLSpec

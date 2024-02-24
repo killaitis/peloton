@@ -61,8 +61,7 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
                                                                     actualRevision = state.revision
                                                                    )
                                              )
-    yield ())
-    .transact(xa)
+    yield ()).transact(xa)
 
   private def readRevision(persistenceId: PersistenceId): ConnectionIO[Option[Long]] = 
     sql"select revision from peloton.durable_state where persistence_id = ${persistenceId.toString()}"
@@ -94,3 +93,5 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
       where 
         persistence_id=${persistenceId.toString()}
     """.update.run
+
+end DurableStateStorePostgreSQL
