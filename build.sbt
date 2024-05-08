@@ -10,7 +10,7 @@ ThisBuild / version := {
 }
 ThisBuild / versionScheme := Some("semver-spec")
 
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.4.1"
 ThisBuild / scalacOptions := Seq(
   "-source:future",
   "-unchecked",
