@@ -1,10 +1,13 @@
 # Changelog
 
 ## (upcoming)
+
+## v0.4.1
 - Updated library dependencies.
 - Added experimental MySQL support for the Peloton persistence layer.
 - Added experimental Cassandra support for the Peloton persistence layer.
-- *API CHANGE*: Moved several classes related to event sourced actors from package `actor` to `persistence` for more consistency. Unfortunately, this breaks API compatibility.
+- *API CHANGE*: Moved several classes related to event sourced actors from package `actor` to `persistence` for more consistency. 
+Unfortunately, this breaks the internal API compatibility.
 
 ## v0.4.0
 - Added snapshot support for event sourced actors, including purging of deprecated events and snapshots with retention rules.

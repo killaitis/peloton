@@ -73,9 +73,9 @@ Peloton is only available for Scala 3. Support for older releases of Scala is cu
 To give an overview of the architecture and terminology of Peloton, refer to the [introduction to Peloton](./docs/introduction.md).
 
 
-## Examples
+## Example Code
 
-For a quick start, examples can be found in the [examples](./examples/) folder.
+For a quick start, example code can be found in the [examples](./examples/) folder.
 
 You can also find additional information about Peloton actors in the [Peloton tests](./core/src/test/scala/peloton/actors/)
 
