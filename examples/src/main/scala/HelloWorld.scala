@@ -62,7 +62,7 @@ object HelloActor:
   // reside. While you *can* explicitly terminate an actor, it will be terminated automatically
   // when the ActorSystem is shut down.
   def spawn()(using actorSystem: ActorSystem) = 
-    actorSystem.spawnActor[Unit, Message](
+    actorSystem.spawnActor[State, Message](
       name            = Some("HelloActor"),
       initialState    = (),
       initialBehavior = behavior

@@ -17,7 +17,7 @@ private [actor] object StatefulActor:
   /**
     * Spawn a new [[Actor]] with simple, stateful behavior. 
     * 
-    * The actor maintains an internal state which is passed to the message handler an can be updated using
+    * Stateful actors maintain a mutable state which is passed to the message handler and can be updated using
     * the context's [[Context.setState]] method. The state is kept only in memory and is not persisted in 
     * any way.
     *
