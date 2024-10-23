@@ -2,6 +2,15 @@
 
 ## (upcoming)
 
+## v0.4.4
+- Updated library dependencies.
+
+## v0.4.3
+- Updated library dependencies.
+
+## v0.4.2
+- Updated library dependencies.
+
 ## v0.4.1
 - Updated library dependencies.
 - Added experimental MySQL support for the Peloton persistence layer.
