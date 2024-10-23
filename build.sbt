@@ -24,6 +24,8 @@ lazy val root = (project in file("."))
   .aggregate(
     core, 
     `persistence-postgresql`, 
+    `persistence-mysql`, 
+    `persistence-cassandra`, 
     `scheduling-cron`
   )
   .settings(
