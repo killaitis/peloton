@@ -25,8 +25,8 @@ class StatefulActorSpec
 
   it should "spawn a new actor" in:
     ActorSystem.use: _ ?=> 
-      import actors.CollectorActor.Message.*
-      import actors.CollectorActor.Response.*
+      import CollectorActor.Message.*
+      import CollectorActor.Response.*
 
       for
         actor  <- CollectorActor.spawn()
@@ -36,8 +36,8 @@ class StatefulActorSpec
 
   it should "handle messages sent by the ASK pattern" in:
     ActorSystem.use: _ ?=> 
-      import actors.CollectorActor.Message.*
-      import actors.CollectorActor.Response.*
+      import CollectorActor.Message.*
+      import CollectorActor.Response.*
 
       for
         actor  <- CollectorActor.spawn()
@@ -50,8 +50,8 @@ class StatefulActorSpec
 
   it should "handle messages sent by the TELL pattern" in:
     ActorSystem.use: _ ?=> 
-      import actors.CollectorActor.Message.*
-      import actors.CollectorActor.Response.*
+      import CollectorActor.Message.*
+      import CollectorActor.Response.*
 
       for
         actor  <- CollectorActor.spawn()
@@ -63,8 +63,8 @@ class StatefulActorSpec
 
   it should "be able to cascade ASK messages" in:
     ActorSystem.use: _ ?=> 
-      import actors.CascadingActor.Message.*
-      import actors.CascadingActor.Response.*
+      import CascadingActor.Message.*
+      import CascadingActor.Response.*
 
       for
         actorC <- CascadingActor.spawn("Actor C", None)
@@ -90,8 +90,8 @@ class StatefulActorSpec
   
   it should "be able to pipe messages from a running fiber to itself" in:
     ActorSystem.use: _ ?=> 
-      import actors.EffectActor.Message.*
-      import actors.EffectActor.Response.*
+      import EffectActor.Message.*
+      import EffectActor.Response.*
 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
@@ -113,8 +113,8 @@ class StatefulActorSpec
 
   it should "be able to cancel the effect fiber" in:
     ActorSystem.use: _ ?=> 
-      import actors.EffectActor.Message.*
-      import actors.EffectActor.Response.*
+      import EffectActor.Message.*
+      import EffectActor.Response.*
 
       for
         actor  <- EffectActor.spawn(effect = meaningOfLifeEffect)
@@ -134,8 +134,8 @@ class StatefulActorSpec
 
   it should "be able to handle a failing effect" in:
     ActorSystem.use: _ ?=> 
-      import actors.EffectActor.Message.*
-      import actors.EffectActor.Response.*
+      import EffectActor.Message.*
+      import EffectActor.Response.*
       
       for
         actor  <- EffectActor.spawn(effect = IO.raiseError(RuntimeException()) *> meaningOfLifeEffect)
