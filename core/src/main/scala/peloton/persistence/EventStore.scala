@@ -176,7 +176,7 @@ object EventStore:
 
   def make(): IO[Resource[IO, EventStore]] = 
     for
-      config <- Config.default()
+      config <- Config.default[IO]()
       store  <- make(config)
     yield store
 

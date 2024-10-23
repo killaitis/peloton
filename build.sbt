@@ -48,32 +48,33 @@ lazy val core = (project in file("core"))
     
     libraryDependencies ++= Seq(
       // Cats + Cats Effect
-      "org.typelevel" %% "cats-effect"                    % CatsEffectVersion,
+      "org.typelevel" %% "cats-effect"                        % CatsEffectVersion,
 
       // Circe Json
-      "io.circe" %% "circe-generic"                       % CirceVersion,
-      "io.circe" %% "circe-core"                          % CirceVersion,
-      "io.circe" %% "circe-parser"                        % CirceVersion,
+      "io.circe" %% "circe-generic"                           % CirceVersion,
+      "io.circe" %% "circe-core"                              % CirceVersion,
+      "io.circe" %% "circe-parser"                            % CirceVersion,
 
       // Http4s
-      "org.http4s" %% "http4s-dsl"                        % Http4sVersion,
-      "org.http4s" %% "http4s-ember-server"               % Http4sVersion,
-      "org.http4s" %% "http4s-ember-client"               % Http4sVersion,
-      "org.http4s" %% "http4s-circe"                      % Http4sVersion,
+      "org.http4s" %% "http4s-dsl"                            % Http4sVersion,
+      "org.http4s" %% "http4s-ember-server"                   % Http4sVersion,
+      "org.http4s" %% "http4s-ember-client"                   % Http4sVersion,
+      "org.http4s" %% "http4s-circe"                          % Http4sVersion,
 
       // Kryo Serialization
-      "io.altoo" %% "scala-kryo-serialization"            % KryoSerializationVersion,
+      "io.altoo" %% "scala-kryo-serialization"                % KryoSerializationVersion,
 
       // Config
-      "com.github.pureconfig" %% "pureconfig-core"        % PureConfigVersion,
+      "com.github.pureconfig" %% "pureconfig-generic-scala3"  % PureConfigVersion,
+      "com.github.pureconfig" %% "pureconfig-cats-effect"     % PureConfigVersion,
 
       // Logging
-      "org.typelevel" %% "log4cats-slf4j"                 % Log4CatsVersion,
+      "org.typelevel" %% "log4cats-slf4j"                     % Log4CatsVersion,
 
       // Testing
-      "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
-      "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
-      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test
+      "org.scalatest" %% "scalatest"                          % ScalaTestVersion          % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest"      % CatsEffectTestingVersion  % Test,
+      "ch.qos.logback" % "logback-classic"                    % LogbackVersion            % Test
     )
   )
 
@@ -167,6 +168,7 @@ lazy val `scheduling-cron` = (project in file("scheduling/cron"))
     )
   )
 
+// Integration tests. Can be run with `sbt integration-tests/test`
 lazy val `integration-tests` = (project in file("integration-tests"))
   .dependsOn(
     core, 

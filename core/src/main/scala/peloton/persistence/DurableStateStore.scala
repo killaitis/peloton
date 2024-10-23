@@ -139,7 +139,7 @@ object DurableStateStore:
 
   def make(): IO[Resource[IO, DurableStateStore]] = 
     for
-      config <- Config.default()
+      config <- Config.default[IO]()
       store  <- make(config)
     yield store
 

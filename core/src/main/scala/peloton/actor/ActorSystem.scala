@@ -323,7 +323,7 @@ object ActorSystem:
 
   def make(): IO[Resource[IO, ActorSystem]] = 
     for 
-      config       <- Config.default()
+      config       <- Config.default[IO]()
       actorSystem  <- ActorSystem.make(config)
     yield actorSystem
 

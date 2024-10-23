@@ -21,7 +21,7 @@ class ConfigSpec
   behavior of "A Peloton Config"
   
   it should "read the config from the default application config file" in:
-    config.Config.default().asserting: config =>
+    config.Config.default[IO]().asserting: config =>
       config shouldBe Config()
 
   it should "read the config from a given String" in:
@@ -50,7 +50,7 @@ class ConfigSpec
             |}
           """.stripMargin
           
-    config.Config.string(configStr).asserting: config =>
+    config.Config.string[IO](configStr).asserting: config =>
       config shouldBe Config(
                         Peloton(
                           None,
@@ -97,7 +97,7 @@ class ConfigSpec
             |}
           """.stripMargin
           
-    config.Config.string(configStr).asserting: config =>
+    config.Config.string[IO](configStr).asserting: config =>
       config shouldBe Config(
                         Peloton(
                           None,
@@ -146,7 +146,7 @@ class ConfigSpec
           """.stripMargin
 
     withSystemProperties(properties):
-      config.Config.string(configStr).asserting: config =>
+      config.Config.string[IO](configStr).asserting: config =>
         config shouldBe Config(
                           Peloton(
                             None, 
