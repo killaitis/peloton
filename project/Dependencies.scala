@@ -18,7 +18,7 @@ object Dependencies {
   val RSFlowAdaptersVersion           = "1.0.2"
 
   val PostgresVersion                 = "42.7.4"
-  val MySQLVersion                    = "8.3.0"
+  val MySQLVersion                    = "8.4.0"
   val CassandraJavaDriverVersion      = "4.17.0"
 
   val TestContainersVersion           = "1.18.3"
