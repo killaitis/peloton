@@ -22,6 +22,9 @@ jobs:
           distribution: temurin
           java-version: 11
 
+      - name: Set up SBT
+        uses: sbt/setup-sbt@v1
+
       - name: Launch Scala Steward
         uses: scala-steward-org/scala-steward-action@v2
         with:
