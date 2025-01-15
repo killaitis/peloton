@@ -17,7 +17,7 @@ object Dependencies {
   val QuartzSchedulerVersion          = "2.5.0"
   val RSFlowAdaptersVersion           = "1.0.2"
 
-  val PostgresVersion                 = "42.7.4"
+  val PostgresVersion                 = "42.7.5"
   val MySQLVersion                    = "9.1.0"
   val CassandraJavaDriverVersion      = "4.17.0"
 
