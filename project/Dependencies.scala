@@ -12,7 +12,7 @@ object Dependencies {
   
   val Fs2Version                      = "3.12.2"
   val DoobieVersion                   = "1.0.0-RC6"
-  val PureConfigVersion               = "0.17.8"
+  val PureConfigVersion               = "0.17.10"
   val KryoSerializationVersion        = "1.2.1"
   val QuartzSchedulerVersion          = "2.5.2"
   val RSFlowAdaptersVersion           = "1.0.2"
