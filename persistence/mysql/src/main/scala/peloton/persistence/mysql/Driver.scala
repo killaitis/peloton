@@ -6,8 +6,8 @@ import peloton.persistence.EventStore
 
 import cats.effect.*
 
-import doobie.util.transactor.Transactor
-import doobie.hikari.HikariTransactor
+import org.typelevel.doobie.util.transactor.Transactor
+import org.typelevel.doobie.hikari.HikariTransactor
 
 import com.zaxxer.hikari.HikariConfig
 
