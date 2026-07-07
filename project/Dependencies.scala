@@ -6,7 +6,7 @@ object Dependencies {
   val LogbackVersion                  = "1.5.32"
   val Log4CatsVersion                 = "2.7.1"
 
-  val Http4sVersion                   = "0.23.33"
+  val Http4sVersion                   = "0.23.36"
   
   val CirceVersion                    = "0.14.15"
   
