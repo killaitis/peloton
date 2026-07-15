@@ -91,8 +91,8 @@ lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
 
     libraryDependencies ++= Seq(
       // Doobie
-      "org.tpolecat" %% "doobie-core"   % DoobieVersion,
-      "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
+      "org.typelevel" %% "doobie-core"   % DoobieVersion,
+      "org.typelevel" %% "doobie-hikari" % DoobieVersion,
 
       // PostgreSQL JDBC driver
       "org.postgresql" % "postgresql"   % PostgresVersion
@@ -112,8 +112,8 @@ lazy val `persistence-mysql` = (project in file("persistence/mysql"))
 
     libraryDependencies ++= Seq(
       // Doobie
-      "org.tpolecat" %% "doobie-core"   % DoobieVersion,
-      "org.tpolecat" %% "doobie-hikari" % DoobieVersion,
+      "org.typelevel" %% "doobie-core"   % DoobieVersion,
+      "org.typelevel" %% "doobie-hikari" % DoobieVersion,
 
       // MySQL JDBC driver
       "com.mysql" % "mysql-connector-j" % MySQLVersion
