@@ -1,12 +1,12 @@
 object Dependencies {
   val CatsEffectVersion               = "3.7.0"
-  val CatsEffectTestingVersion        = "1.7.0"
+  val CatsEffectTestingVersion        = "1.8.0"
 
   val ScalaTestVersion                = "3.2.20"
-  val LogbackVersion                  = "1.5.32"
+  val LogbackVersion                  = "1.5.38"
   val Log4CatsVersion                 = "2.7.1"
 
-  val Http4sVersion                   = "0.23.33"
+  val Http4sVersion                   = "0.23.36"
   
   val CirceVersion                    = "0.14.15"
   
@@ -17,7 +17,7 @@ object Dependencies {
   val QuartzSchedulerVersion          = "2.5.2"
   val RSFlowAdaptersVersion           = "1.0.2"
 
-  val PostgresVersion                 = "42.7.10"
+  val PostgresVersion                 = "42.7.13"
   val MySQLVersion                    = "9.6.0"
   val CassandraJavaDriverVersion      = "4.17.0"
 
