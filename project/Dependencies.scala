@@ -4,7 +4,7 @@ object Dependencies {
 
   val ScalaTestVersion                = "3.2.20"
   val LogbackVersion                  = "1.5.38"
-  val Log4CatsVersion                 = "2.7.1"
+  val Log4CatsVersion                 = "2.8.0"
 
   val Http4sVersion                   = "0.23.36"
   
