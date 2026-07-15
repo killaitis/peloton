@@ -5,8 +5,8 @@ import peloton.persistence.DurableStateStore.*
 
 import cats.effect.IO
 
-import doobie.*
-import doobie.implicits.*
+import org.typelevel.doobie.*
+import org.typelevel.doobie.implicits.*
 
 private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends DurableStateStore:
 
