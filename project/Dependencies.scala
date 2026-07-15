@@ -8,7 +8,7 @@ object Dependencies {
 
   val Http4sVersion                   = "0.23.36"
   
-  val CirceVersion                    = "0.14.15"
+  val CirceVersion                    = "0.14.16"
   
   val Fs2Version                      = "3.12.2"
   val DoobieVersion                   = "1.0.0-RC12"
