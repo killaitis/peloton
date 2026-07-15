@@ -7,9 +7,9 @@ import peloton.persistence.EncodedEvent
 import cats.effect.IO
 import fs2.Stream
 
-import doobie.util.transactor.Transactor
-import doobie.*
-import doobie.implicits.*
+import org.typelevel.doobie.util.transactor.Transactor
+import org.typelevel.doobie.*
+import org.typelevel.doobie.implicits.*
 
 private [mysql] class EventStoreMySQL(using xa: Transactor[IO]) extends EventStore:
 

@@ -1,24 +1,24 @@
 object Dependencies {
   val CatsEffectVersion               = "3.7.0"
-  val CatsEffectTestingVersion        = "1.7.0"
+  val CatsEffectTestingVersion        = "1.8.0"
 
-  val ScalaTestVersion                = "3.2.19"
-  val LogbackVersion                  = "1.5.32"
-  val Log4CatsVersion                 = "2.7.1"
+  val ScalaTestVersion                = "3.2.20"
+  val LogbackVersion                  = "1.5.38"
+  val Log4CatsVersion                 = "2.8.0"
 
-  val Http4sVersion                   = "0.23.33"
+  val Http4sVersion                   = "0.23.36"
   
-  val CirceVersion                    = "0.14.15"
+  val CirceVersion                    = "0.14.16"
   
   val Fs2Version                      = "3.13.0"
-  val DoobieVersion                   = "1.0.0-RC12"
+  val DoobieVersion                   = "1.0.0-RC13"
   val PureConfigVersion               = "0.17.10"
-  val KryoSerializationVersion        = "1.2.1"
+  val KryoSerializationVersion        = "1.5.2"
   val QuartzSchedulerVersion          = "2.5.2"
   val RSFlowAdaptersVersion           = "1.0.2"
 
-  val PostgresVersion                 = "42.7.10"
-  val MySQLVersion                    = "9.6.0"
+  val PostgresVersion                 = "42.7.13"
+  val MySQLVersion                    = "9.7.0"
   val CassandraJavaDriverVersion      = "4.17.0"
 
   val TestContainersVersion           = "1.18.3"
