@@ -8,6 +8,8 @@ lazy val commonPublishSettings = Seq(
   organizationName     := "Andreas Killaitis",
   organizationHomepage := Some(url("https://www.github.com/killaitis")),
   
+  useGpg := false,
+  
   publishTo := {
     val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
     if (version.value.endsWith("-SNAPSHOT"))

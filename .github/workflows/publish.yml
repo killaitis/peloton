@@ -28,6 +28,6 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           PGP_SECRET_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
-          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          # PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: sbt "clean; test; publishSigned; sonaRelease"
 
