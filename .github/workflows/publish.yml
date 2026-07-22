@@ -22,15 +22,12 @@ jobs:
       - name: Set up SBT
         uses: sbt/setup-sbt@v1
 
-      - name: Import PGP key
-        env:
-          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
-        run: gpg --import <(echo "$PGP_PRIVATE_KEY")
-        
       - name: Publish
         env:
           CI_VERSION: ${{ github.ref }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          PGP_SECRET_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: sbt "clean; test; publishSigned; sonaRelease"
 
