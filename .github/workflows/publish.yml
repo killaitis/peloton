@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 11
+          java-version: 25
 
       - name: Set up SBT
         uses: sbt/setup-sbt@v1
@@ -32,4 +32,5 @@ jobs:
           CI_VERSION: ${{ github.ref }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        run: sbt "; + test; + publishSigned; sonatypeBundleRelease"
+        run: sbt clean test publishSigned sonaRelease
+

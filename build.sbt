@@ -1,23 +1,36 @@
-import Dependencies._
+lazy val Benchmark = 
+  config("benchmark")
+    .extend(Test)
+    .describedAs("Benchmark tests")
 
-lazy val Benchmark = config("benchmark") extend Test describedAs "Benchmark tests"
+credentials += Credentials(
+  "Sonatype Nexus Repository Manager",
+  "://sonatype.com",
+  sys.env.getOrElse("SONATYPE_USERNAME", ""),
+  sys.env.getOrElse("SONATYPE_PASSWORD", "")
+)
 
-ThisBuild / version := {
+version := {
   val Tag = "refs/tags/(.*)".r
   sys.env.get("CI_VERSION")
     .collect { case Tag(tag) => tag.stripPrefix("v") }
     .getOrElse("0.0.1-SNAPSHOT")
 }
-ThisBuild / versionScheme := Some("semver-spec")
 
-ThisBuild / scalaVersion := "3.3.3"
-ThisBuild / scalacOptions := Seq(
+versionScheme := Some("semver-spec")
+
+scalaVersion := "3.3.7"
+
+javacOptions ++= Seq("--release", "11")
+
+scalacOptions := Seq(
   "-source:future",
   "-unchecked",
   "-deprecation",
   "-Wunused:all",
   "-Wnonunit-statement",
-  "-Wvalue-discard"
+  "-Wvalue-discard",
+  "-release", "11"
 )
 
 lazy val root = (project in file("."))
@@ -41,40 +54,39 @@ lazy val core = (project in file("core"))
     name                      := "peloton-core",
     description               := "The Peloton core library",
 
-    publishTo                 := sonatypePublishToBundle.value,
-    publishMavenStyle         := true,
-    
+    Publish.commonPublishSettings,
+
     Test / parallelExecution  := false,
     
     libraryDependencies ++= Seq(
       // Cats + Cats Effect
-      "org.typelevel" %% "cats-effect"                        % CatsEffectVersion,
+      "org.typelevel" %% "cats-effect"                        % Versions.CatsEffect,
 
       // Circe Json
-      "io.circe" %% "circe-generic"                           % CirceVersion,
-      "io.circe" %% "circe-core"                              % CirceVersion,
-      "io.circe" %% "circe-parser"                            % CirceVersion,
+      "io.circe" %% "circe-generic"                           % Versions.Circe,
+      "io.circe" %% "circe-core"                              % Versions.Circe,
+      "io.circe" %% "circe-parser"                            % Versions.Circe,
 
       // Http4s
-      "org.http4s" %% "http4s-dsl"                            % Http4sVersion,
-      "org.http4s" %% "http4s-ember-server"                   % Http4sVersion,
-      "org.http4s" %% "http4s-ember-client"                   % Http4sVersion,
-      "org.http4s" %% "http4s-circe"                          % Http4sVersion,
+      "org.http4s" %% "http4s-dsl"                            % Versions.Http4s,
+      "org.http4s" %% "http4s-ember-server"                   % Versions.Http4s,
+      "org.http4s" %% "http4s-ember-client"                   % Versions.Http4s,
+      "org.http4s" %% "http4s-circe"                          % Versions.Http4s,
 
       // Kryo Serialization
-      "io.altoo" %% "scala-kryo-serialization"                % KryoSerializationVersion,
+      "io.altoo" %% "scala-kryo-serialization"                % Versions.KryoSerialization,
 
       // Config
-      "com.github.pureconfig" %% "pureconfig-generic-scala3"  % PureConfigVersion,
-      "com.github.pureconfig" %% "pureconfig-cats-effect"     % PureConfigVersion,
+      "com.github.pureconfig" %% "pureconfig-generic-scala3"  % Versions.PureConfig,
+      "com.github.pureconfig" %% "pureconfig-cats-effect"     % Versions.PureConfig,
 
       // Logging
-      "org.typelevel" %% "log4cats-slf4j"                     % Log4CatsVersion,
+      "org.typelevel" %% "log4cats-slf4j"                     % Versions.Log4Cats,
 
       // Testing
-      "org.scalatest" %% "scalatest"                          % ScalaTestVersion          % Test,
-      "org.typelevel" %% "cats-effect-testing-scalatest"      % CatsEffectTestingVersion  % Test,
-      "ch.qos.logback" % "logback-classic"                    % LogbackVersion            % Test
+      "org.scalatest" %% "scalatest"                          % Versions.ScalaTest          % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest"      % Versions.CatsEffectTesting  % Test,
+      "ch.qos.logback" % "logback-classic"                    % Versions.Logback            % Test
     )
   )
 
@@ -84,18 +96,17 @@ lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
     name                      := "peloton-persistence-postgresql",
     description               := "Peloton persistence driver for PostgreSQL",
     
-    publishTo                 := sonatypePublishToBundle.value,
-    publishMavenStyle         := true,
+    Publish.commonPublishSettings,
     
     Test / parallelExecution  := false,
 
     libraryDependencies ++= Seq(
       // Doobie
-      "org.typelevel" %% "doobie-core"   % DoobieVersion,
-      "org.typelevel" %% "doobie-hikari" % DoobieVersion,
+      "org.typelevel" %% "doobie-core"   % Versions.Doobie,
+      "org.typelevel" %% "doobie-hikari" % Versions.Doobie,
 
       // PostgreSQL JDBC driver
-      "org.postgresql" % "postgresql"   % PostgresVersion
+      "org.postgresql" % "postgresql"   % Versions.Postgres
     )
   )
 
@@ -105,18 +116,17 @@ lazy val `persistence-mysql` = (project in file("persistence/mysql"))
     name                      := "peloton-persistence-mysqll",
     description               := "Peloton persistence driver for MySQL / MariaDB",
     
-    publishTo                 := sonatypePublishToBundle.value,
-    publishMavenStyle         := true,
+    Publish.commonPublishSettings,
     
     Test / parallelExecution  := false,
 
     libraryDependencies ++= Seq(
       // Doobie
-      "org.typelevel" %% "doobie-core"   % DoobieVersion,
-      "org.typelevel" %% "doobie-hikari" % DoobieVersion,
+      "org.typelevel" %% "doobie-core"   % Versions.Doobie,
+      "org.typelevel" %% "doobie-hikari" % Versions.Doobie,
 
       // MySQL JDBC driver
-      "com.mysql" % "mysql-connector-j" % MySQLVersion
+      "com.mysql" % "mysql-connector-j" % Versions.MySQL
     )
   )
 
@@ -126,45 +136,43 @@ lazy val `persistence-cassandra` = (project in file("persistence/cassandra"))
     name                      := "peloton-persistence-cassandra",
     description               := "Peloton persistence driver for Apache Cassandra 4.x",
     
-    publishTo                 := sonatypePublishToBundle.value,
-    publishMavenStyle         := true,
+    Publish.commonPublishSettings,
     
     Test / parallelExecution  := false,
 
     libraryDependencies ++= Seq(
-      "co.fs2" %% "fs2-core"                  % Fs2Version,
+      "co.fs2" %% "fs2-core"                  % Versions.Fs2,
       // "co.fs2" %% "fs2-reactive-streams"      % Fs2Version,
-      "org.reactivestreams" % "reactive-streams-flow-adapters" % RSFlowAdaptersVersion,
+      "org.reactivestreams" % "reactive-streams-flow-adapters" % Versions.RSFlowAdapters,
 
 
       // Cassandra Java Driver
-      "com.datastax.oss" % "java-driver-core" % CassandraJavaDriverVersion
+      "com.datastax.oss" % "java-driver-core" % Versions.CassandraJavaDriver
     )
   )
 
 lazy val `scheduling-cron` = (project in file("scheduling/cron"))
   .dependsOn(core)
-  .settings(
+  .settings(    
     name                      := "peloton-scheduling-cron",
     description               := "Peloton CRON timer scheduling support for Cats Effect",
     
-    publishTo                 := sonatypePublishToBundle.value,
-    publishMavenStyle         := true,
+    Publish.commonPublishSettings,
     
     Test / parallelExecution  := false,
 
     libraryDependencies ++= Seq(
       // Quartz Scheduler
-      "org.quartz-scheduler" % "quartz"                   % QuartzSchedulerVersion 
-        exclude (
+      ("org.quartz-scheduler" % "quartz"                   % Versions.QuartzScheduler)
+        .exclude(
           "com.zaxxer", 
           "HikariCP-java7"
         ),
 
       // Testing
-      "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
-      "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
-      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test,
+      "org.scalatest" %% "scalatest"                      % Versions.ScalaTest          % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest"  % Versions.CatsEffectTesting  % Test,
+      "ch.qos.logback" % "logback-classic"                % Versions.Logback            % Test,
     )
   )
 
@@ -178,7 +186,7 @@ lazy val `integration-tests` = (project in file("integration-tests"))
     `scheduling-cron`
   )
   .configs(Benchmark)
-  .settings(
+  .settings(    
     name                      := "peloton-integration-tests",
     description               := "Peloton integration tests",
     
@@ -197,13 +205,13 @@ lazy val `integration-tests` = (project in file("integration-tests"))
 
     libraryDependencies ++= Seq(
       // Testing
-      "org.scalatest" %% "scalatest"                      % ScalaTestVersion          % Test,
-      "org.typelevel" %% "cats-effect-testing-scalatest"  % CatsEffectTestingVersion  % Test,
-      "ch.qos.logback" % "logback-classic"                % LogbackVersion            % Test,
-      "org.testcontainers" % "testcontainers"             % TestContainersVersion     % Test,
-      "org.testcontainers" % "postgresql"                 % TestContainersVersion     % Test,
-      "org.testcontainers" % "mysql"                      % TestContainersVersion     % Test,
-      "org.testcontainers" % "cassandra"                  % TestContainersVersion     % Test
+      "org.scalatest" %% "scalatest"                      % Versions.ScalaTest          % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest"  % Versions.CatsEffectTesting  % Test,
+      "ch.qos.logback" % "logback-classic"                % Versions.Logback            % Test,
+      "org.testcontainers" % "testcontainers"             % Versions.TestContainers     % Test,
+      "org.testcontainers" % "postgresql"                 % Versions.TestContainers     % Test,
+      "org.testcontainers" % "mysql"                      % Versions.TestContainers     % Test,
+      "org.testcontainers" % "cassandra"                  % Versions.TestContainers     % Test
     )
   )
 
