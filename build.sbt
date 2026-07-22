@@ -3,6 +3,37 @@ lazy val Benchmark =
     .extend(Test)
     .describedAs("Benchmark tests")
 
+lazy val commonPublishSettings = Seq(
+  organization         := "de.killaitis",
+  organizationName     := "Andreas Killaitis",
+  organizationHomepage := Some(url("https://www.github.com/killaitis")),
+  
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (version.value.endsWith("-SNAPSHOT"))
+      Some("central-snapshots" at centralSnapshots)
+    else
+      localStaging.value
+  },
+
+  licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php")),
+  homepage := Some(url("https://github.com/killaitis/peloton")),
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/killaitis/peloton"),
+      "https://github.com/killaitis/peloton.git"
+    )
+  ),
+  developers := List(
+    Developer(
+      id    = "killaitis",
+      name  = "Andreas Killaitis",
+      email = "andreas@killaitis.de",
+      url   = url("http://www.github.com/killaitis/")
+    )
+  )
+)
+
 credentials += Credentials(
   "Sonatype Nexus Repository Manager",
   "://sonatype.com",
@@ -54,7 +85,7 @@ lazy val core = (project in file("core"))
     name                      := "peloton-core",
     description               := "The Peloton core library",
 
-    Publish.commonPublishSettings,
+    commonPublishSettings,
 
     Test / parallelExecution  := false,
     
@@ -96,7 +127,7 @@ lazy val `persistence-postgresql` = (project in file("persistence/postgresql"))
     name                      := "peloton-persistence-postgresql",
     description               := "Peloton persistence driver for PostgreSQL",
     
-    Publish.commonPublishSettings,
+    commonPublishSettings,
     
     Test / parallelExecution  := false,
 
@@ -116,7 +147,7 @@ lazy val `persistence-mysql` = (project in file("persistence/mysql"))
     name                      := "peloton-persistence-mysqll",
     description               := "Peloton persistence driver for MySQL / MariaDB",
     
-    Publish.commonPublishSettings,
+    commonPublishSettings,
     
     Test / parallelExecution  := false,
 
@@ -136,7 +167,7 @@ lazy val `persistence-cassandra` = (project in file("persistence/cassandra"))
     name                      := "peloton-persistence-cassandra",
     description               := "Peloton persistence driver for Apache Cassandra 4.x",
     
-    Publish.commonPublishSettings,
+    commonPublishSettings,
     
     Test / parallelExecution  := false,
 
@@ -157,7 +188,7 @@ lazy val `scheduling-cron` = (project in file("scheduling/cron"))
     name                      := "peloton-scheduling-cron",
     description               := "Peloton CRON timer scheduling support for Cats Effect",
     
-    Publish.commonPublishSettings,
+    commonPublishSettings,
     
     Test / parallelExecution  := false,
 
