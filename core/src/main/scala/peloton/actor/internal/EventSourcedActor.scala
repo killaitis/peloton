@@ -1,22 +1,11 @@
 package peloton.actor.internal
 
-import peloton.actor.Actor
 import peloton.actor.Actor.*
-import peloton.actor.ActorContext
-import peloton.actor.Behavior
-import peloton.persistence.PersistenceId
-import peloton.persistence.EventStore
-import peloton.persistence.PayloadCodec
-import peloton.persistence.Snapshot
-import peloton.persistence.Event
-import peloton.persistence.Retention
-import peloton.persistence.MessageHandler
-import peloton.persistence.EventHandler
-import peloton.persistence.SnapshotPredicate
+import peloton.actor.{Actor, ActorContext}
+import peloton.persistence.{Event, EventHandler, EventStore, MessageHandler, PayloadCodec, PersistenceId, Retention, Snapshot, SnapshotPredicate}
 
 import cats.effect.*
-import cats.effect.std.Queue
-import cats.effect.std.Mutex
+import cats.effect.std.{Mutex, Queue}
 import cats.implicits.*
 
 import scala.concurrent.duration.FiniteDuration

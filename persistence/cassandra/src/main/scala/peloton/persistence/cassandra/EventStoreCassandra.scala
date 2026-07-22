@@ -1,19 +1,13 @@
 package peloton.persistence.cassandra
 
-import peloton.persistence.EventStore
-import peloton.persistence.PersistenceId
-import peloton.persistence.EncodedEvent
+import peloton.persistence.{EncodedEvent, EventStore, PersistenceId}
 
 import cats.effect.IO
 import cats.effect.std.AtomicCell
-
-import fs2.Stream
-import fs2.interop.flow.syntax.*
-
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.*
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import org.reactivestreams.FlowAdapters
+import fs2.Stream
 
 import java.util.UUID
 
@@ -203,9 +197,10 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
           Reactive Streams have long been superseeded by Project Reactor. 
           There must be a better way to connect to FS2.
         */
-        org.reactivestreams.FlowAdapters
-          .toFlowPublisher(cqlSession.executeReactive(boundStatement))
-          .toStream[IO](512)
+        Stream.fromPublisher[IO](
+          org.reactivestreams.FlowAdapters.toFlowPublisher(cqlSession.executeReactive(boundStatement)),
+          512
+        )
       }
 
 end EventStoreCassandra

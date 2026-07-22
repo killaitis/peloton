@@ -1,18 +1,10 @@
 package peloton.actors
 
-import cats.effect.IO
-
-import peloton.actor.Actor
 import peloton.actor.Actor.{CanAsk, canAsk}
-import peloton.actor.ActorContext
-import peloton.actor.ActorRef
-import peloton.actor.ActorSystem
-import peloton.persistence.PersistenceId
-import peloton.persistence.EventStore
-import peloton.persistence.EventAction
-import peloton.persistence.PayloadCodec
-import peloton.persistence.KryoPayloadCodec
-import peloton.persistence.SnapshotPredicate
+import peloton.actor.{ActorContext, ActorRef, ActorSystem}
+import peloton.persistence.{EventAction, EventStore, KryoPayloadCodec, PayloadCodec, PersistenceId, SnapshotPredicate}
+
+import cats.effect.IO
 
 /**
   * An event sourced actor with simple calculation operations 

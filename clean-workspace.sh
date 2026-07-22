@@ -4,7 +4,7 @@
 # if VS Code behaves "weird" or seems broken. Close VS Code, run this script and start VS Code again. 
 # Then re-import the project.
 
-for dir in .bloop .metals build target metals.sbt out
+for dir in .bloop .metals .bsp build target metals.sbt out
 do
     find . -name $dir -exec rm -rf {} +
 done

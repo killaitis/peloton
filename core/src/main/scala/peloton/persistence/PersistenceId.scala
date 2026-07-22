@@ -3,8 +3,8 @@ package peloton.persistence
 
 opaque type PersistenceId = String
 
-extension (id: PersistenceId)
-  def toString(): String = id.toString()
+// extension (id: PersistenceId)
+//   def toString(): String = id.toString()
 
 object PersistenceId:
   

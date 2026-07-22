@@ -49,7 +49,7 @@ object EffectActor:
         case Message.Get() => 
           context.reply(Response.GetResponse(meaningOfLife = state.meaningOfLife))
 
-        case Message.HandleResult(meaningOfLife) => 
+        case Message.HandleResult(_) => 
           context.currentBehaviorM
     end behaviorWhenIdle
 

@@ -282,7 +282,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     *   An `IO` that evaluates to an `ActorRef` to the new actor.
     */
   private def register[M](spawnF: => IO[Actor[M]], 
-                          maybeName: Option[String] = None
+                          maybeName: Option[String]
                          )(using 
                           ct: reflect.ClassTag[M]
                          ): IO[ActorRef[M]] = 

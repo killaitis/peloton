@@ -1,11 +1,9 @@
 package peloton.utils
 
-import peloton.*
-import peloton.persistence.DurableStateStore
-import peloton.persistence.EncodedState
-import peloton.persistence.PersistenceId
+import peloton.persistence.{DurableStateStore, EncodedState, PersistenceId}
 
 import cats.effect.IO
+
 import scala.collection.mutable
 
 /**

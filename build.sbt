@@ -50,7 +50,7 @@ version := {
 
 versionScheme := Some("semver-spec")
 
-scalaVersion := "3.3.7"
+scalaVersion := "3.3.8"
 
 javacOptions ++= Seq("--release", "11")
 

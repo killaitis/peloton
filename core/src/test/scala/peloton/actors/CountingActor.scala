@@ -1,17 +1,10 @@
 package peloton.actors
 
-import cats.effect.IO
-import cats.effect.Ref
-
-import peloton.actor.Actor
-import peloton.actor.ActorRef
 import peloton.actor.Actor.*
-import peloton.actor.ActorSystem
-import peloton.persistence.PersistenceId
-import peloton.persistence.DurableStateStore
-import peloton.persistence.PayloadCodec
-import peloton.persistence.KryoPayloadCodec
-import peloton.actor.Behavior
+import peloton.actor.{ActorRef, ActorSystem, Behavior}
+import peloton.persistence.{DurableStateStore, KryoPayloadCodec, PayloadCodec, PersistenceId}
+
+import cats.effect.{IO, Ref}
 
 /**
   * A simple actor that 

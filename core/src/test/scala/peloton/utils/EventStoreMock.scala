@@ -1,12 +1,10 @@
 package peloton.utils
 
-import peloton.*
-import peloton.persistence.EventStore
-import peloton.persistence.PersistenceId
-import peloton.persistence.EncodedEvent
+import peloton.persistence.{EncodedEvent, EventStore, PersistenceId}
 
 import cats.effect.IO
 import fs2.Stream
+
 import scala.collection.mutable
 
 /**

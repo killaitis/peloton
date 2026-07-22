@@ -1,15 +1,11 @@
 package peloton
 
-import peloton.persistence.PayloadCodec
-import peloton.persistence.JsonPayloadCodec
-
-import io.circe.*
-import io.circe.generic.semiauto.*
-
-import org.scalatest.flatspec.AsyncFlatSpec
-import org.scalatest.matchers.should.Matchers
+import peloton.persistence.{JsonPayloadCodec, PayloadCodec}
 
 import cats.effect.testing.scalatest.AsyncIOSpec
+import io.circe.*
+import org.scalatest.flatspec.AsyncFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class JsonPayloadCodecSpec
     extends AsyncFlatSpec 
