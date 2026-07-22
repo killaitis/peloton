@@ -22,6 +22,13 @@ jobs:
       - name: Set up SBT
         uses: sbt/setup-sbt@v1
 
+      - name: Prepare PGP Key
+        env:
+          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.sbt/gpg
+          echo "$PGP_PRIVATE_KEY" > ~/.sbt/gpg/secring.asc
+
       - name: Publish
         env:
           CI_VERSION: ${{ github.ref }}

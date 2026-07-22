@@ -9,11 +9,6 @@ lazy val commonPublishSettings = Seq(
   organizationHomepage := Some(url("https://www.github.com/killaitis")),
   
   useGpg := false,
-  pgpSecretRing := {
-    val key = sys.env.getOrElse("PGP_SECRET_KEY", "")
-    if (key.nonEmpty) sbtpgp.PgpKeyRing.fromString(key).toOption.orNull
-    else null
-  },
 
   publishTo := {
     val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
