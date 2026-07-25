@@ -3,7 +3,7 @@ object Versions:
   val CatsEffectTesting        = "1.8.0"
 
   val ScalaTest                = "3.2.20"
-  val Logback                  = "1.5.38"
+  val Logback                  = "1.6.0"
   val Log4Cats                 = "2.8.0"
 
   val Http4s                   = "0.23.36"
