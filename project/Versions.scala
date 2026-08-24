@@ -1,5 +1,5 @@
 object Versions:
-  val CatsEffect               = "3.7.0"
+  val CatsEffect               = "3.7.1"
   val CatsEffectTesting        = "1.8.0"
 
   val ScalaTest                = "3.2.20"
