@@ -10,7 +10,7 @@ object Versions:
   
   val Circe                    = "0.14.16"
   
-  val Fs2                      = "3.13.0"
+  val Fs2                      = "3.14.0"
   val Doobie                   = "1.0.0-RC13"
   val PureConfig               = "0.17.10"
   val KryoSerialization        = "1.5.2"
