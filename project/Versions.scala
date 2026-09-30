@@ -6,7 +6,7 @@ object Versions:
   val Logback                  = "1.6.0"
   val Log4Cats                 = "2.8.0"
 
-  val Http4s                   = "0.23.36"
+  val Http4s                   = "0.23.38"
   
   val Circe                    = "0.14.16"
   
