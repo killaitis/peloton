@@ -20,7 +20,7 @@ jobs:
           java-version: 25
 
       - name: Set up SBT
-        uses: sbt/setup-sbt@v1
+        uses: sbt/setup-sbt@v1.5.5
 
       - name: Prepare PGP Key
         env:
