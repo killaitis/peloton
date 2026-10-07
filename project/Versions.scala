@@ -8,7 +8,7 @@ object Versions:
 
   val Http4s                   = "0.23.36"
   
-  val Circe                    = "0.14.16"
+  val Circe                    = "0.14.17"
   
   val Fs2                      = "3.13.0"
   val Doobie                   = "1.0.0-RC13"
