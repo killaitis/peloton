@@ -54,6 +54,10 @@ class ActorSystem private (
     *   the state and the message. The behavior is evaluated effectful.
     * @param name
     *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param inboxCapacity
+    *   Optional maximum number of externally submitted messages waiting in the actor inbox. Sends
+    *   backpressure while full. The message currently being processed, internal self-messages, and
+    *   stashed messages are not counted. Defaults to an unbounded inbox.
     * @param ClassTag
     *   A given instance of a [[ClassTag]] for the actor's message type `M`. Used internally to circumvent the
     *   JVM's type limitations.
@@ -62,9 +66,10 @@ class ActorSystem private (
     */
   def spawnActor[S, M](initialState: S,
                   initialBehavior: Behavior[S, M],
-                  name: Option[String] = None
+                  name: Option[String] = None,
+                  inboxCapacity: Option[Int] = None
                  )(using ClassTag[M]): IO[ActorRef[M]] = 
-    register(StatefulActor.spawn[S, M](initialState, initialBehavior), 
+    register(StatefulActor.spawn[S, M](initialState, initialBehavior, inboxCapacity),
              name
             )
 
@@ -94,6 +99,10 @@ class ActorSystem private (
     *   the state and the message. The behavior is evaluated effectful.
     * @param name
     *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param inboxCapacity
+    *   Optional maximum number of externally submitted messages waiting in the actor inbox. Sends
+    *   backpressure while full. The message currently being processed, internal self-messages, and
+    *   stashed messages are not counted. Defaults to an unbounded inbox.
     * @param DurableStateStore
     *   A given instance of [[DurableStateStore]]
     * @param PayloadCodec
@@ -107,7 +116,8 @@ class ActorSystem private (
   def spawnDurableStateActor[S, M](persistenceId: PersistenceId,
                                    initialState: S,
                                    initialBehavior: Behavior[S, M],
-                                   name: Option[String] = None
+                                   name: Option[String] = None,
+                                   inboxCapacity: Option[Int] = None
                                   )(using 
                                    DurableStateStore,
                                    PayloadCodec[S],
@@ -115,7 +125,8 @@ class ActorSystem private (
                                   ): IO[ActorRef[M]] =
     register(DurableStateActor.spawn[S, M](persistenceId, 
                                            initialState, 
-                                           initialBehavior
+                                           initialBehavior,
+                                           inboxCapacity
                                           ), 
              name
             )
@@ -169,6 +180,10 @@ class ActorSystem private (
     *   [[Retention]] parameters that control if and how events and snapshots are purged after creating a new snapshot. 
     * @param name
     *   An optional name for the actor. If omitted, the actor system will create a name for the actor. 
+    * @param inboxCapacity
+    *   Optional maximum number of externally submitted messages waiting in the actor inbox. Sends
+    *   backpressure while full. The message currently being processed, internal self-messages, and
+    *   stashed messages are not counted. Defaults to an unbounded inbox.
     * @param EventStore
     *   A given instance of [[EventStore]]
     * @param PayloadCodec
@@ -187,7 +202,8 @@ class ActorSystem private (
                                       eventHandler: EventHandler[S, E],
                                       snapshotPredicate: SnapshotPredicate[S, E] = SnapshotPredicate.noSnapshots,
                                       retention: Retention = Retention(),
-                                      name: Option[String] = None
+                                      name: Option[String] = None,
+                                      inboxCapacity: Option[Int] = None
                                      )(using 
                                       EventStore,
                                       PayloadCodec[E],
@@ -199,7 +215,8 @@ class ActorSystem private (
                                               messageHandler, 
                                               eventHandler, 
                                               snapshotPredicate,
-                                              retention
+                                              retention,
+                                              inboxCapacity
                                              ), 
              name
             )
@@ -264,8 +281,8 @@ class ActorSystem private (
   /**
     * Shuts down the actor system.
     * 
-    * This will also terminate all running actors. If an actor is currently processing a message, 
-    * termination will wait for the message handler to finish.
+    * This stops all running actors. Queued ASK requests fail, and currently running message handlers
+    * are canceled; shutdown does not wait for them to finish normally.
     *
     * @return
     *   `IO[Unit]`

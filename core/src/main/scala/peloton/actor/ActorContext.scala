@@ -3,6 +3,8 @@ package peloton.actor
 import cats.effect.*
 import cats.implicits.*
 
+import scala.concurrent.duration.FiniteDuration
+
 /**
   * The actor's context provides some helper functions for its message handler (`Behavior`)
   * 
@@ -112,6 +114,12 @@ trait ActorContext[S, M](val currentBehavior: Behavior[S, M]):
         .void
         .handleErrorWith(_ => IO.unit)
     ).start
+
+  /**
+    * Schedules a message to this actor after a delay. The returned fiber can be canceled directly;
+    * any remaining timer is also canceled when the actor terminates.
+    */
+  def scheduleOnce(delay: FiniteDuration, message: M): IO[FiberIO[Unit]]
 
   def currentBehaviorM = IO.pure(currentBehavior)
 

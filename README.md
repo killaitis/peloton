@@ -34,6 +34,10 @@ Peloton aims to be a lightweight and playful actor library for Cats Effect. It p
 - **Remote actors**: an actor system can provide an HTTP interface to other actor system on different hosts and make its local actors available to these actor systems.
 - **Scheduled effects**: effects can be scheduled using a Quartz-compatible CRON expression and triggered and evaluated in the background.
 
+Actor spawn methods accept an optional `inboxCapacity` to backpressure external sends when the inbox is full.
+Actors can schedule delayed self-messages with `ActorContext.scheduleOnce`; outstanding timers are canceled when the actor terminates.
+For CRON work, `CronScheduler.scheduleTask` returns a handle that supports cancellation, joining, and an error callback.
+
 Peloton actors are designed to work together with your Cats Effect application. All actor operations and interactions are effectful in the `IO` effect type.
 
 ## Get started
