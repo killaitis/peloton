@@ -180,3 +180,7 @@ peloton {
 
 This will start an HTTP server on the local machine. Actors from other machines/processes can then use 
 a remote actor reference to send messages to actors belonging to the actor system on this machine.
+
+The remote actor endpoint currently has no authentication or TLS and deserializes message payloads with
+Kryo. Bind it only to loopback or a trusted network; use a TLS/authenticating proxy before exposing it
+to untrusted clients.
