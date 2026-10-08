@@ -6,7 +6,6 @@ import peloton.persistence.DurableStateStore.*
 import cats.effect.IO
 
 import com.datastax.oss.driver.api.core.CqlSession
-import com.datastax.oss.driver.api.core.cql.*
 
 private [cassandra] class DurableStateStoreCassandra(cqlSession: CqlSession) extends DurableStateStore:
 

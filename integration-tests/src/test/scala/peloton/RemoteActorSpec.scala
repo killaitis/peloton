@@ -14,8 +14,6 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration.*
-
 import java.net.URI
 import org.http4s.client.UnexpectedStatus
 

@@ -90,7 +90,7 @@ class EventSourcedActorSpec
         _      <- actor ! Sub(5) // <- snapshot: 23+11-5 = 29
         _      <- actor ! Add(2)
         _      <- actor ! Add(6)
-        state1 <- actor ? GetState
+        _      <- actor ? GetState
         _      <- actor.terminate
 
         _      <- readEvents.asserting:
