@@ -26,7 +26,7 @@ jobs:
         uses: sbt/setup-sbt@v1.5.5
 
       - name: Launch Scala Steward
-        uses: scala-steward-org/scala-steward-action@v2.92.0
+        uses: scala-steward-org/scala-steward-action@v2.96.0
         with:
           author-name: Scala Steward
           author-email: ${{ secrets.WORKFLOW_EMAIL }}
