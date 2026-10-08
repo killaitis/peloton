@@ -20,6 +20,9 @@ import cats.implicits.*
 import cats.effect.std.AtomicCell
 import cats.effect.std.UUIDGen
 
+import org.http4s.client.Client
+import org.http4s.ember.client.EmberClientBuilder
+
 import com.comcast.ip4s.*
 
 import scala.concurrent.duration.*
@@ -27,7 +30,10 @@ import scala.reflect.ClassTag
 import java.net.URI
 
 
-class ActorSystem private (actorRefs: AtomicCell[IO, ActorSystem.RegistryState]):
+class ActorSystem private (
+  actorRefs: AtomicCell[IO, ActorSystem.RegistryState],
+  httpClient: Client[IO]
+):
 
   /**
     * Spawn a new [[Actor]] with simple, stateful behavior. 
@@ -216,7 +222,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, ActorSystem.RegistryState])
       ref        <- IO.fromOption(state.actors.get(name))(new NoSuchElementException(s"actor not found: $name"))
       fromClass   = ref.classTag.runtimeClass
       toClass     = ct.runtimeClass 
-      ref        <- if toClass.isAssignableFrom(fromClass) 
+      ref        <- if ActorSystem.isAssignable(toClass, fromClass)
                     then IO.pure(ref) 
                     else IO.raiseError(new IllegalArgumentException(s"actor $name supports messages of type ${ref.classTag.runtimeClass.getName}, but not ${ct.runtimeClass.getName}"))
     yield ref.asInstanceOf[ActorRef[M]]
@@ -241,7 +247,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, ActorSystem.RegistryState])
       actorName  <- uri.getPath match
                       case s"/$name" if name.nonEmpty => IO.pure(name)
                       case path => IO.raiseError(IllegalArgumentException(s"URI must contain an actor name path: $path"))
-      ref        <- IO.pure(new RemoteActorRef[M](host = host, port = port, actorName = actorName))
+      ref        <- IO.pure(new RemoteActorRef[M](httpClient, host = host, port = port, actorName = actorName))
     yield ref
 
   /**
@@ -313,7 +319,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, ActorSystem.RegistryState])
                         override def name = actorName
                         override def classTag = ct
                         override def tell(message: M): IO[Unit] = actor.tell(message)
-                        override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = actor.ask(message)
+                        override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = actor.ask(message, timeout)
                         override def terminate: IO[Unit] = 
                           actorRefs.evalUpdate: refs =>
                             for
@@ -331,6 +337,22 @@ end ActorSystem
 
 object ActorSystem:
 
+  private[peloton] def isAssignable(targetClass: Class[?], messageClass: Class[?]): Boolean =
+    boxed(targetClass).isAssignableFrom(boxed(messageClass))
+
+  private def boxed(clazz: Class[?]): Class[?] =
+    if !clazz.isPrimitive then clazz
+    else if clazz == java.lang.Boolean.TYPE then classOf[java.lang.Boolean]
+    else if clazz == java.lang.Byte.TYPE then classOf[java.lang.Byte]
+    else if clazz == java.lang.Short.TYPE then classOf[java.lang.Short]
+    else if clazz == java.lang.Character.TYPE then classOf[java.lang.Character]
+    else if clazz == java.lang.Integer.TYPE then classOf[java.lang.Integer]
+    else if clazz == java.lang.Long.TYPE then classOf[java.lang.Long]
+    else if clazz == java.lang.Float.TYPE then classOf[java.lang.Float]
+    else if clazz == java.lang.Double.TYPE then classOf[java.lang.Double]
+    else if clazz == java.lang.Void.TYPE then classOf[scala.runtime.BoxedUnit]
+    else clazz
+
   private final case class RegistryState(
     actors: Map[String, ActorRef[?]],
     shuttingDown: Boolean
@@ -343,32 +365,41 @@ object ActorSystem:
     yield actorSystem
 
   def make(config: Config): IO[Resource[IO, ActorSystem]] = 
-    for
-        httpServerReleaseRef <- Ref[IO].of[Option[IO[Unit]]](None)
-        acquire           = 
-                            for 
-                              // Create a new ActorSystem
-                              actorRefs    <- AtomicCell[IO].of(RegistryState(Map.empty[String, ActorRef[?]], shuttingDown = false))
-                              actorSystem   = new ActorSystem(actorRefs)
+    Ref[IO].of(Option.empty[IO[Unit]]).map: clientReleaseRef =>
+      def releaseHttpClient: IO[Unit] =
+        clientReleaseRef.getAndSet(None).flatMap(_.traverseVoid(identity))
 
-                              // Start HTTP Server if activated in the config
-                              _            <- config.peloton.http.traverseVoid: http => 
-                                                for 
-                                                  host               <- IO.fromOption(Hostname.fromString(http.hostname))(new IllegalArgumentException(s"Invalid hostname: ${http.hostname}"))
-                                                  port               <- IO.fromOption(Port.fromInt(http.port))(new IllegalArgumentException(s"Invalid port: ${http.port}"))
-                                                  httpServer          = ActorSystemServer(host, port, actorSystem)
-                                                  releaseHttpServer  <- httpServer.allocated.map(_._2)
-                                                  _                  <- httpServerReleaseRef.set(Some(releaseHttpServer))
-                                                yield ()
-                            yield actorSystem
-        release           = (actorSystem: ActorSystem) =>
-                              for 
-                                maybeHttpServerRelease <- httpServerReleaseRef.get
-                                _                      <- maybeHttpServerRelease.traverseVoid(identity)
-                                _                      <- actorSystem.shutdown
-                              yield ()
+      val httpClientResource = Resource.make(
+        EmberClientBuilder
+          .default[IO]
+          .withTimeout(Duration.Inf)
+          .withIdleConnectionTime(10.minutes)
+          .build
+          .allocated
+          .flatTap { case (_, release) => clientReleaseRef.set(Some(release)) }
+          .map(_._1)
+      )(_ => releaseHttpClient)
 
-    yield Resource.make(acquire)(release)
+      for
+        httpClient <- httpClientResource
+        actorSystem <- Resource.make(
+                         AtomicCell[IO].of(RegistryState(Map.empty[String, ActorRef[?]], shuttingDown = false))
+                           .map(actorRefs => new ActorSystem(actorRefs, httpClient))
+                       )(_.shutdown)
+        _ <- config.peloton.http match
+               case None => Resource.eval(IO.unit)
+               case Some(http) =>
+                 Resource.eval:
+                   for
+                     host <- IO.fromOption(Hostname.fromString(http.hostname))(new IllegalArgumentException(s"Invalid hostname: ${http.hostname}"))
+                     port <- IO.fromOption(Port.fromInt(http.port))(new IllegalArgumentException(s"Invalid port: ${http.port}"))
+                   yield (host, port)
+                 .flatMap { case (host, port) =>
+                   Resource.make(ActorSystemServer(host, port, actorSystem).allocated) { case (_, releaseServer) =>
+                     actorSystem.shutdown.guarantee(releaseHttpClient.guarantee(releaseServer))
+                   }.void
+                 }
+      yield actorSystem
 
   /**
    * Wraps a given function into an [[ActorSystem]] resource bracket, 

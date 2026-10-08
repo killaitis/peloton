@@ -5,7 +5,7 @@ import peloton.actor.ActorRef
 
 import cats.effect.IO
 
-import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.client.Client
 import org.http4s.Headers
 import org.http4s.headers.Accept
 import org.http4s.headers.`Content-Type`
@@ -25,7 +25,7 @@ import io.circe.generic.auto.*
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
-class RemoteActorRef[M](host: String, port: Int, actorName: String)(using ct: reflect.ClassTag[M]) extends ActorRef[M]:
+class RemoteActorRef[M](httpClient: Client[IO], host: String, port: Int, actorName: String)(using ct: reflect.ClassTag[M]) extends ActorRef[M]:
 
   import RemoteActorRef.*
   import ActorSystemServer.Http.*
@@ -45,7 +45,7 @@ class RemoteActorRef[M](host: String, port: Int, actorName: String)(using ct: re
                                             payload = payload
                                            ))
                     .withContentType(`Content-Type`(MediaType.application.json))
-      _        <- httpClient.use(_.expect[TellResponse](request))
+      _        <- httpClient.expect[TellResponse](request).timeout(1.minute)
     yield ()
 
   override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using CanAsk[M2, R]): IO[R] = 
@@ -58,7 +58,7 @@ class RemoteActorRef[M](host: String, port: Int, actorName: String)(using ct: re
                                            timeout = timeout
                                           ))
                     .withContentType(`Content-Type`(MediaType.application.json))
-      response <- httpClient.use(_.expect[AskResponse](request))
+      response <- httpClient.expect[AskResponse](request).timeout(timeout + 30.seconds)
       response <- deserializePayload(response.payload)
     yield response.asInstanceOf[R]
 
@@ -67,13 +67,6 @@ class RemoteActorRef[M](host: String, port: Int, actorName: String)(using ct: re
 end RemoteActorRef
 
 object RemoteActorRef:
-
-  private val httpClient = 
-    EmberClientBuilder
-      .default[IO]
-      .withTimeout(1.minutes)
-      .withIdleConnectionTime(10.minutes)
-      .build
 
   private val headers = 
     Headers(
