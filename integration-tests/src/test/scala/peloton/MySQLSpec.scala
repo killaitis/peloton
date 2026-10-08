@@ -3,27 +3,21 @@ package peloton
 import peloton.config.Config
 import peloton.config.Config.*
 
-import org.testcontainers.containers.MySQLContainer
+import org.testcontainers.mysql.MySQLContainer
 import org.testcontainers.utility.DockerImageName
 
 object MySQLSpec:
 
-  private lazy val container = {
-    val imageName = DockerImageName.parse("mysql").withTag("5.7") // ("8") does not work
-    val container = new MySQLContainer(imageName)
-    
-    container.start()
-    container
-  }
+  lazy val testContainerConfig: Config = configFor("8.4")
+  lazy val currentTestContainerConfig: Config = configFor("9.7")
 
-  lazy val testContainerConfig: Config =
+  private def configFor(version: String): Config = {
+    val imageName = DockerImageName.parse("mysql").withTag(version)
+    val container = new MySQLContainer(imageName)
+    container.start()
     val dbUsername = "root" // TODO: use container.getUsername() and grant access to test user
     val dbPassword = container.getPassword()
     val jdbcUrl = container.getJdbcUrl()
-
-    println(s"dbUsername [$dbUsername]")
-    println(s"dbPassword [$dbPassword]")
-    println(s"jdbcUrl [$jdbcUrl]")
 
     Config(
       Peloton(
@@ -47,5 +41,6 @@ object MySQLSpec:
         )
       )
     )
+  }
 
 end MySQLSpec

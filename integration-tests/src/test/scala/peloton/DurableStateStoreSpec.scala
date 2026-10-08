@@ -11,6 +11,7 @@ import peloton.DurableStateStoreSpec.given
 import peloton.config.Config
 
 import cats.effect.testing.scalatest.AsyncIOSpec
+import cats.implicits.*
 import org.scalatest.flatspec.AsyncFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -129,6 +130,22 @@ abstract class DurableStateStoreSpec
 
         _        <- store.write(persistenceId, oldState)
         _        <- store.write(persistenceId, newState).assertThrows[RevisionMismatchError]
+      yield ()
+
+  it should "reject one of two concurrent writes for the same next revision" in:
+    DurableStateStore.use(config): store ?=>
+      val initial = DurableState(payload = MyData(0, "initial"), revision = 1L, timestamp = 1L)
+      val first   = DurableState(payload = MyData(1, "first"), revision = 2L, timestamp = 2L)
+      val second  = DurableState(payload = MyData(2, "second"), revision = 2L, timestamp = 2L)
+
+      for
+        _       <- store.drop()
+        _       <- store.create()
+        _       <- store.write(persistenceId, initial)
+        results <- (store.write(persistenceId, first).attempt, store.write(persistenceId, second).attempt).parTupled
+        _        = List(results._1, results._2).count(_.isRight) shouldBe 1
+        stored  <- store.read[MyData](persistenceId)
+        _        = Set(first.payload, second.payload) should contain(stored.get.payload)
       yield ()
 
 end DurableStateStoreSpec

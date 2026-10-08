@@ -15,4 +15,7 @@ object PersistenceId:
     if id.trim.isEmpty then 
       throw IllegalArgumentException("Persistence ID must not be empty")
 
+    if id.length > 255 then
+      throw IllegalArgumentException("Persistence ID must not exceed 255 characters")
+
     id

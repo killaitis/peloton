@@ -26,10 +26,7 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
                 )
               """.update.run
 
-              // for readRevision()
-        _  <- sql"""
-                create unique index if not exists idx_durable_state_revision on peloton.durable_state (persistence_id, revision)
-              """.update.run
+        _  <- sql"drop index if exists peloton.idx_durable_state_revision".update.run
       yield ()
     ).transact(xa)
 
@@ -54,7 +51,10 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
                               if state.revision == expectedRevision then
                                 maybeCurrentRevision match
                                   case None    => insertEncodedState(persistenceId, state)
-                                  case Some(_) => updateEncodedState(persistenceId, state)
+                                  case Some(currentRevision) =>
+                                    updateEncodedState(persistenceId, currentRevision, state).flatMap: rowsUpdated =>
+                                      if rowsUpdated == 1 then FC.unit
+                                      else FC.raiseError(RevisionMismatchError(persistenceId, expectedRevision, state.revision))
                               else 
                                 FC.raiseError(RevisionMismatchError(persistenceId = persistenceId,
                                                                     expectedRevision = expectedRevision,
@@ -64,7 +64,7 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
     yield ()).transact(xa)
 
   private def readRevision(persistenceId: PersistenceId): ConnectionIO[Option[Long]] = 
-    sql"select revision from peloton.durable_state where persistence_id = ${persistenceId.toString()}"
+    sql"select revision from peloton.durable_state where persistence_id = ${persistenceId.toString()} for update"
       .query[Long].option
 
   private def insertEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
@@ -82,7 +82,7 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
       )
     """.update.run
 
-  private def updateEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
+  private def updateEncodedState(persistenceId: PersistenceId, currentRevision: Long, state: EncodedState): ConnectionIO[Int] =
     sql"""
       update 
         peloton.durable_state 
@@ -91,7 +91,7 @@ private [postgresql] class DurableStateStorePostgreSQL(using xa: Transactor[IO])
         timestamp=${state.timestamp},
         payload=${state.payload}
       where 
-        persistence_id=${persistenceId.toString()}
+        persistence_id=${persistenceId.toString()} and revision=$currentRevision
     """.update.run
 
 end DurableStateStorePostgreSQL

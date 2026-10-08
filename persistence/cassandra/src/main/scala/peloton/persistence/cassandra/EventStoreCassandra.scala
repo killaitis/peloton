@@ -52,7 +52,7 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
 
   override def clear(): IO[Unit] =
     execute("truncate table peloton.eventstore") >>
-    execute("truncate table peloton.eventstore")
+    execute("truncate table peloton.snapshots")
 
   private def readEventsSinceSnapshot(persistenceId: PersistenceId, snapshot: String): Stream[IO, EncodedEvent] =
     query("""
@@ -137,21 +137,42 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
       )
 
   override def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit] = 
-    for
-      maybeOldestSnapshot  <- getOldestSnapshot(persistenceId, snapshotsToKeep)
-      _                    <- maybeOldestSnapshot match
-                                case None => 
-                                  IO.unit
-                                case Some(snapshot) =>
-                                  execute("""
-                                    delete from peloton.eventstore 
-                                    where persistence_id = ? and sequence_id < ?
-                                    """, persistenceId.toString(), UUID.fromString(snapshot)) >> 
-                                  execute("""
-                                    delete from peloton.snapshots
-                                    where persistence_id = ? and sequence_id < ?
-                                    """, persistenceId.toString(), UUID.fromString(snapshot))
-    yield ()
+    if snapshotsToKeep < 0 then
+      IO.raiseError(IllegalArgumentException("snapshotsToKeep must not be negative"))
+    else if snapshotsToKeep == 0 then
+      query("""
+        select sequence_id
+        from peloton.snapshots
+        where persistence_id = ?
+      """, persistenceId.toString())
+        .evalMap: row =>
+          val snapshotId = row.getUuid("sequence_id")
+          execute("""
+            delete from peloton.eventstore
+            where persistence_id = ? and sequence_id = ?
+          """, persistenceId.toString(), snapshotId) >>
+          execute("""
+            delete from peloton.snapshots
+            where persistence_id = ? and sequence_id = ?
+          """, persistenceId.toString(), snapshotId)
+        .compile
+        .drain
+    else
+      for
+        maybeOldestSnapshot  <- getOldestSnapshot(persistenceId, snapshotsToKeep)
+        _                    <- maybeOldestSnapshot match
+                                  case None =>
+                                    IO.unit
+                                  case Some(snapshot) =>
+                                    execute("""
+                                      delete from peloton.eventstore
+                                      where persistence_id = ? and sequence_id < ?
+                                      """, persistenceId.toString(), UUID.fromString(snapshot)) >>
+                                    execute("""
+                                      delete from peloton.snapshots
+                                      where persistence_id = ? and sequence_id < ?
+                                      """, persistenceId.toString(), UUID.fromString(snapshot))
+      yield ()
 
   
   private def getCurrentSnapshot(persistenceId: PersistenceId): IO[Option[String]] = 
@@ -173,34 +194,29 @@ private [cassandra] class EventStoreCassandra(cqlSession: CqlSession,
 
   private def prepare(statement: String): Stream[IO, PreparedStatement] = 
     Stream.eval:
-      statementCache.modify: cache =>
+      statementCache.evalModify: cache =>
         cache.get(statement) match
           case None => 
-            val preparedStatement = cqlSession.prepare(statement)
-            (cache + (statement -> preparedStatement), preparedStatement)
+            IO.blocking(cqlSession.prepare(statement)).map: preparedStatement =>
+              (cache + (statement -> preparedStatement), preparedStatement)
           case Some(preparedStatement) => 
-            (cache, preparedStatement)
+            IO.pure((cache, preparedStatement))
 
   private def execute(statement: String, args: Any*): IO[Unit] = 
     prepare(statement)
       .evalMap(preparedStatement => IO(preparedStatement.bind(args*)))
-      .evalMap(boundStatement => IO(cqlSession.execute(boundStatement)))
+      .evalMap(boundStatement => IO.blocking(cqlSession.execute(boundStatement)))
       .compile
       .drain
 
   private def query(statement: String, args: Any*): Stream[IO, Row] =
     prepare(statement)
       .evalMap(preparedStatement => IO(preparedStatement.bind(args*)))
-      .flatMap { boundStatement => 
-        /* 
-          TODO: why does Cassandra use this deprecated API?
-          Reactive Streams have long been superseeded by Project Reactor. 
-          There must be a better way to connect to FS2.
-        */
+      .flatMap: boundStatement =>
+        // Adapt the driver's Reactive Streams publisher to the JDK Flow API expected by FS2.
         Stream.fromPublisher[IO](
           org.reactivestreams.FlowAdapters.toFlowPublisher(cqlSession.executeReactive(boundStatement)),
           512
         )
-      }
 
 end EventStoreCassandra

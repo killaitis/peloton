@@ -19,15 +19,32 @@ private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends D
                 create table if not exists peloton.durable_state (
                   persistence_id  varchar(255)  not null,
                   revision        bigint        not null,
-                  payload         blob          not null,
+                  payload         longblob      not null,
                   timestamp       bigint        not null,
 
-                  primary key (persistence_id),
-                  unique key (persistence_id, revision)
+                      primary key (persistence_id)
                 ) engine InnoDB
               """.update.run
+
+        _  <- sql"alter table peloton.durable_state modify payload longblob not null".update.run
+        _  <- dropRedundantRevisionIndex
       yield ()
     ).transact(xa)
+
+  private def dropRedundantRevisionIndex: ConnectionIO[Unit] =
+    sql"""
+      select count(*)
+      from information_schema.statistics
+      where table_schema = 'peloton'
+        and table_name = 'durable_state'
+        and index_name = 'persistence_id'
+        and seq_in_index = 2
+        and column_name = 'revision'
+    """.query[Int].unique.flatMap:
+      case 0 => FC.unit
+      case _ =>
+        sql"alter table peloton.durable_state drop index persistence_id"
+          .update.run.map(_ => ())
 
   override def drop(): IO[Unit] = 
     sql"drop table if exists peloton.durable_state"
@@ -50,7 +67,10 @@ private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends D
                               if state.revision == expectedRevision then
                                 maybeCurrentRevision match
                                   case None    => insertEncodedState(persistenceId, state)
-                                  case Some(_) => updateEncodedState(persistenceId, state)
+                                  case Some(currentRevision) =>
+                                    updateEncodedState(persistenceId, currentRevision, state).flatMap: rowsUpdated =>
+                                      if rowsUpdated == 1 then FC.unit
+                                      else FC.raiseError(RevisionMismatchError(persistenceId, expectedRevision, state.revision))
                               else 
                                 FC.raiseError(RevisionMismatchError(persistenceId = persistenceId,
                                                                     expectedRevision = expectedRevision,
@@ -60,7 +80,7 @@ private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends D
     yield ()).transact(xa)
 
   private def readRevision(persistenceId: PersistenceId): ConnectionIO[Option[Long]] = 
-    sql"select revision from peloton.durable_state where persistence_id = ${persistenceId.toString()}"
+    sql"select revision from peloton.durable_state where persistence_id = ${persistenceId.toString()} for update"
       .query[Long].option
 
   private def insertEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
@@ -78,7 +98,7 @@ private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends D
       )
     """.update.run
 
-  private def updateEncodedState(persistenceId: PersistenceId, state: EncodedState): ConnectionIO[Int] = 
+  private def updateEncodedState(persistenceId: PersistenceId, currentRevision: Long, state: EncodedState): ConnectionIO[Int] =
     sql"""
       update 
         peloton.durable_state 
@@ -87,7 +107,7 @@ private [mysql] class DurableStateStoreMySQL(using xa: Transactor[IO]) extends D
         timestamp=${state.timestamp},
         payload=${state.payload}
       where 
-        persistence_id=${persistenceId.toString()}
+        persistence_id=${persistenceId.toString()} and revision=$currentRevision
     """.update.run
 
 end DurableStateStoreMySQL
