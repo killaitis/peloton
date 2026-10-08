@@ -54,7 +54,7 @@ class DurableStateActorSpec
                     _ shouldBe None
 
         _      <- actor ! Open
-        _      <- (1 to incs).traverse_(_ => actor ! Inc)
+        _      <- (1 to incs).traverseVoid(_ => actor ! Inc)
 
         _      <- (actor ? GetState).asserting:
                     _ shouldBe GetStateResponse(isOpen = true, counter = incs) 
@@ -74,7 +74,7 @@ class DurableStateActorSpec
         for
           actor  <- CountingActor.spawn(persistenceId)
           _      <- actor ! Open
-          _      <- (1 to numberOfIncrements).traverse_(_ => actor ! Inc)
+          _      <- (1 to numberOfIncrements).traverseVoid(_ => actor ! Inc)
           _      <- actor ? Close // use ASK to ensure that all previous messages have been processed
           _      <- actor.terminate
         yield ()

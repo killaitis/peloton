@@ -65,7 +65,7 @@ private [actor] object StatefulActor:
                                                       currentBehaviorM
 
                                                   override def reply[R](response: R) =
-                                                    responseChannel.traverse_(_.complete(Right(response)).void) >>
+                                                    responseChannel.traverseVoid(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 
                                                   override def setState(newState: S) =
@@ -93,7 +93,7 @@ private [actor] object StatefulActor:
                         newBehavior          <- currentBehavior
                                                   .receive(state, message, context)
                                                   .recoverWith: error => 
-                                                    responseChannel.traverse_(_.complete(Left(error)).void) >>
+                                                    responseChannel.traverseVoid(_.complete(Left(error)).void) >>
                                                     IO.pure(currentBehavior)
                                                   
                         _                    <- behaviorRef.set(newBehavior)
