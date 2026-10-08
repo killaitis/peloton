@@ -4,8 +4,8 @@ import cats.{Applicative, Parallel}
 import cats.implicits.*
 
 extension (r: scala.collection.immutable.Range)
-  def traverse_[F[_]: Applicative, B](f: Int => F[B]): F[Unit] = 
-    r.asInstanceOf[Seq[Int]].traverse_(f)
+  def traverseVoid[F[_]: Applicative, B](f: Int => F[B]): F[Unit] = 
+    r.asInstanceOf[Seq[Int]].traverseVoid(f)
 
   def traverse[F[_]: Applicative, B](f: Int => F[B]): F[Seq[B]] = 
     r.asInstanceOf[Seq[Int]].traverse(f)

@@ -107,7 +107,7 @@ trait ActorContext[S, M](val currentBehavior: Behavior[S, M]):
         .guaranteeCase: outcome => 
           for
             msg <- mapOutcome(outcome)
-            _   <- msg.traverse_(tellSelf)
+            _   <- msg.traverseVoid(tellSelf)
           yield ()
         .void
         .handleErrorWith(_ => IO.unit)

@@ -108,7 +108,7 @@ private [actor] object EventSourcedActor:
                                                       currentBehaviorM
 
                                                   override def reply[R](response: R) =
-                                                    responseChannel.traverse_(_.complete(Right(response)).void) >>
+                                                    responseChannel.traverseVoid(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 
                                                   override def setState(newState: S) =
@@ -136,7 +136,7 @@ private [actor] object EventSourcedActor:
                         _                    <- behavior
                                                   .receive(state, message, context)
                                                   .recoverWith: error => 
-                                                    responseChannel.traverse_(_.complete(Left(error)).void)
+                                                    responseChannel.traverseVoid(_.complete(Left(error)).void)
                       yield ()).foreverM.void.start
 
       // Compose the actor

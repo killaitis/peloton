@@ -94,7 +94,7 @@ private [actor] object DurableStateActor:
                                                       currentBehaviorM
 
                                                   override def reply[R](response: R) =
-                                                    responseChannel.traverse_(_.complete(Right(response)).void) >>
+                                                    responseChannel.traverseVoid(_.complete(Right(response)).void) >>
                                                     currentBehaviorM
 
                                                   override def setState(newState: S) = 
@@ -129,7 +129,7 @@ private [actor] object DurableStateActor:
                         newBehavior          <- currentBehavior
                                                   .receive(state.payload, message, context)
                                                   .recoverWith: error => 
-                                                    responseChannel.traverse_(_.complete(Left(error)).void) >>
+                                                    responseChannel.traverseVoid(_.complete(Left(error)).void) >>
                                                     IO.pure(currentBehavior)
                                                   
                         _                    <- behaviorRef.set(newBehavior)                    

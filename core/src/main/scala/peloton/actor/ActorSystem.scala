@@ -27,7 +27,7 @@ import scala.reflect.ClassTag
 import java.net.URI
 
 
-class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
+class ActorSystem private (actorRefs: AtomicCell[IO, ActorSystem.RegistryState]):
 
   /**
     * Spawn a new [[Actor]] with simple, stateful behavior. 
@@ -211,8 +211,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     */
   def actorRef[M](name: String)(using ct: ClassTag[M]): IO[ActorRef[M]] =
     for 
-      refs       <- actorRefs.get
-      ref        <- IO.fromOption(refs.get(name))(new NoSuchElementException(s"actor not found: $name"))
+      state      <- actorRefs.get
+      _          <- IO.raiseWhen(state.shuttingDown)(IllegalStateException("actor system is shutting down"))
+      ref        <- IO.fromOption(state.actors.get(name))(new NoSuchElementException(s"actor not found: $name"))
       fromClass   = ref.classTag.runtimeClass
       toClass     = ct.runtimeClass 
       ref        <- if toClass.isAssignableFrom(fromClass) 
@@ -237,7 +238,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
       _          <- IO.raiseWhen(uri.getScheme != "peloton")(new IllegalArgumentException(s"unsupported URI scheme: ${uri.getScheme}"))
       host        = uri.getHost
       port        = uri.getPort
-      actorName   = uri.getPath.stripPrefix("/") // TODO: THIS IS DIRTY!!!
+      actorName  <- uri.getPath match
+                      case s"/$name" if name.nonEmpty => IO.pure(name)
+                      case path => IO.raiseError(IllegalArgumentException(s"URI must contain an actor name path: $path"))
       ref        <- IO.pure(new RemoteActorRef[M](host = host, port = port, actorName = actorName))
     yield ref
 
@@ -263,8 +266,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
     */
   def shutdown: IO[Unit] = 
     for 
-      refs <- actorRefs.get
-      _    <- refs.values.toList.traverse_(_.terminate)
+      refs <- actorRefs.evalModify: state =>
+            IO.pure((state.copy(shuttingDown = true), state.actors.values.toList))
+      _    <- refs.traverseVoid(_.terminate)
     yield ()
 
   /**
@@ -286,7 +290,9 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                          )(using 
                           ct: reflect.ClassTag[M]
                          ): IO[ActorRef[M]] = 
-    actorRefs.evalModify: refs =>
+    actorRefs.evalModify: state =>
+
+      val refs = state.actors
 
       def uniqueActorName: IO[String] = 
         for 
@@ -297,6 +303,7 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
         yield name
 
       for
+        _          <- IO.raiseWhen(state.shuttingDown)(IllegalStateException("cannot spawn an actor after shutdown"))
         actorName  <- maybeName match
                         case Some(name) => IO.pure(name)
                         case None       => uniqueActorName
@@ -310,16 +317,24 @@ class ActorSystem private (actorRefs: AtomicCell[IO, Map[String, ActorRef[?]]]):
                         override def terminate: IO[Unit] = 
                           actorRefs.evalUpdate: refs =>
                             for
-                              _ <- if refs.contains(actorName) then actor.terminate else IO.unit
-                            yield (refs - actorName)
+                              _ <- actor.terminate
+                              updatedActors = refs.actors.get(actorName) match
+                                case Some(registeredRef) if registeredRef eq this => refs.actors - actorName
+                                case _                                            => refs.actors
+                            yield refs.copy(actors = updatedActors)
 
-      yield (refs + (actorName -> actorRef), actorRef)
+      yield (state.copy(actors = refs + (actorName -> actorRef)), actorRef)
   end register
 
 end ActorSystem
 
 
 object ActorSystem:
+
+  private final case class RegistryState(
+    actors: Map[String, ActorRef[?]],
+    shuttingDown: Boolean
+  )
 
   def make(): IO[Resource[IO, ActorSystem]] = 
     for 
@@ -329,29 +344,28 @@ object ActorSystem:
 
   def make(config: Config): IO[Resource[IO, ActorSystem]] = 
     for
-        httpServerRef    <- Ref[IO].of[Option[FiberIO[Nothing]]](None)
+        httpServerReleaseRef <- Ref[IO].of[Option[IO[Unit]]](None)
         acquire           = 
                             for 
                               // Create a new ActorSystem
-                              actorRefs    <- AtomicCell[IO].of(Map.empty[String, ActorRef[?]])
+                              actorRefs    <- AtomicCell[IO].of(RegistryState(Map.empty[String, ActorRef[?]], shuttingDown = false))
                               actorSystem   = new ActorSystem(actorRefs)
 
                               // Start HTTP Server if activated in the config
-                              _            <- config.peloton.http.traverse_ { http => 
+                              _            <- config.peloton.http.traverseVoid: http => 
                                                 for 
-                                                  host       <- IO.fromOption(Hostname.fromString(http.hostname))(new IllegalArgumentException(s"Invalid hostname: ${http.hostname}"))
-                                                  port       <- IO.fromOption(Port.fromInt(http.port))(new IllegalArgumentException(s"Invalid port: ${http.port}"))
-                                                  httpServer  = ActorSystemServer(host, port, actorSystem)
-                                                  fib        <- httpServer.use(_ => IO.never).start
-                                                  _          <- httpServerRef.set(Some(fib))
+                                                  host               <- IO.fromOption(Hostname.fromString(http.hostname))(new IllegalArgumentException(s"Invalid hostname: ${http.hostname}"))
+                                                  port               <- IO.fromOption(Port.fromInt(http.port))(new IllegalArgumentException(s"Invalid port: ${http.port}"))
+                                                  httpServer          = ActorSystemServer(host, port, actorSystem)
+                                                  releaseHttpServer  <- httpServer.allocated.map(_._2)
+                                                  _                  <- httpServerReleaseRef.set(Some(releaseHttpServer))
                                                 yield ()
-                                              }
                             yield actorSystem
         release           = (actorSystem: ActorSystem) =>
                               for 
-                                maybeHttpServer  <- httpServerRef.get
-                                _                <- maybeHttpServer.traverse_(_.cancel)
-                                _                <- actorSystem.shutdown
+                                maybeHttpServerRelease <- httpServerReleaseRef.get
+                                _                      <- maybeHttpServerRelease.traverseVoid(identity)
+                                _                      <- actorSystem.shutdown
                               yield ()
 
     yield Resource.make(acquire)(release)
