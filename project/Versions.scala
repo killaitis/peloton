@@ -21,4 +21,4 @@ object Versions:
   val MySQL                    = "26.7.0"
   val CassandraJavaDriver      = "4.17.0"
 
-  val TestContainers           = "1.18.3"
+  val TestContainers           = "2.0.5"

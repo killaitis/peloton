@@ -21,6 +21,16 @@ persistence implementation, e.g., PostgreSQL.
 Both the durable state store and the event store have independent configuration sections. 
 This allows you to use different database backends for both types of persistence.
 
+### Supported database versions
+
+The persistence adapters require these minimum server versions:
+
+| Database | Minimum supported version | Integration-test versions |
+| -------- | ------------------------- | ------------------------- |
+| MySQL    | 8.4 LTS                   | 8.4 and 9.7               |
+| PostgreSQL | 15                      | 15 and 18                 |
+| Cassandra | 4.1                      | 4.1 and 5.0               |
+
 A typical persistence configuration looks like this:
 
 ```
@@ -113,7 +123,27 @@ connection pool.
 | `maximum-pool-size` |                    | The maximum size of the Hikari connection pool. Default: `10` |
 
 
+#### MySQL
+
+Peloton uses the MySQL Connector/J together with a [Hikari](https://github.com/brettwooldridge/HikariCP)
+connection pool.
+
+*Driver name*:
+`peloton.persistence.mysql.Driver`
+
+*Parameters*:
+| Name                | Required?          | Description |
+| ------------------- | ------------------ | ----------- |
+| `url`               | :white_check_mark: | The JDBC URL for the MySQL database. Example: `jdbc:mysql://mydb.com:3306/peloton` |
+| `user`              | :white_check_mark: | The name of the database user account |
+| `password`          | :white_check_mark: | The password of the database user account |
+| `maximum-pool-size` |                    | The maximum size of the Hikari connection pool. Default: `10` |
+
+
 #### Cassandra (experimental)
+
+The Cassandra adapter is integration-tested against Cassandra 4.1 and 5.0, but has not yet been
+validated in production. Treat it as experimental for production deployments.
 
 *Driver name*:
 `peloton.persistence.cassandra.Driver`
@@ -127,6 +157,10 @@ connection pool.
 | `password`             | :white_check_mark: | The password of the database user account|
 | `replication-strategy` |                    | The keyspace replication strategy. Default: `SimpleStrategy` |
 | `replication-factor`   |                    | The keyspace replication factor. Default: 1 |
+
+Both Cassandra stores use the same `peloton` keyspace. If both are enabled, configure the same
+replication strategy and factor for the durable-state store and event store; the settings used when
+the keyspace is first created take effect.
 
 
 ## Peloton remote actor configuration

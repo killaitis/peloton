@@ -25,13 +25,30 @@ private [mysql] class EventStoreMySQL(using xa: Transactor[IO]) extends EventSto
                   persistence_id  varchar(255)  not null,
                   timestamp       bigint        not null,
                   is_snapshot     boolean       not null default false,
-                  payload         blob          not null,
+                  payload         longblob      not null,
 
-                  primary key (sequence_id, persistence_id)
+                  primary key (sequence_id, persistence_id),
+                  key idx_event_store_persistence_sequence (persistence_id, sequence_id)
                 ) engine InnoDB
               """.update.run
+
+        _  <- sql"alter table peloton.event_store modify payload longblob not null".update.run
+        _  <- ensurePersistenceSequenceIndex
       yield ()
     ).transact(xa)
+
+  private def ensurePersistenceSequenceIndex: ConnectionIO[Unit] =
+    sql"""
+      select count(*)
+      from information_schema.statistics
+      where table_schema = 'peloton'
+        and table_name = 'event_store'
+        and index_name = 'idx_event_store_persistence_sequence'
+    """.query[Int].unique.flatMap:
+      case 0 =>
+        sql"create index idx_event_store_persistence_sequence on peloton.event_store (persistence_id, sequence_id)"
+          .update.run.map(_ => ())
+      case _ => FC.unit
 
   override def drop(): IO[Unit] =
     (
@@ -91,21 +108,27 @@ private [mysql] class EventStoreMySQL(using xa: Transactor[IO]) extends EventSto
     """.update.run.transact(xa).void
 
   override def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit] = 
-    sql"""
-      delete from peloton.event_store 
-      where 
-            persistence_id = ${persistenceId.toString()} 
-        and sequence_id < ( select min(sequence_id) 
-                            from 
-                              ( select sequence_id 
-                                from peloton.event_store 
-                                where 
-                                      persistence_id = ${persistenceId.toString()} 
-                                  and is_snapshot 
-                                order by sequence_id desc
-                                limit ${snapshotsToKeep}
-                              ) as A
-                          )
-    """.update.run.transact(xa).void
+    if snapshotsToKeep < 0 then
+      IO.raiseError(IllegalArgumentException("snapshotsToKeep must not be negative"))
+    else if snapshotsToKeep == 0 then
+      sql"delete from peloton.event_store where persistence_id = ${persistenceId.toString()} and is_snapshot"
+        .update.run.transact(xa).void
+    else
+      sql"""
+        delete from peloton.event_store
+        where
+              persistence_id = ${persistenceId.toString()}
+          and sequence_id < ( select min(sequence_id)
+                              from
+                                ( select sequence_id
+                                  from peloton.event_store
+                                  where
+                                        persistence_id = ${persistenceId.toString()}
+                                    and is_snapshot
+                                  order by sequence_id desc
+                                  limit ${snapshotsToKeep}
+                                ) as A
+                            )
+      """.update.run.transact(xa).void
 
 end EventStoreMySQL

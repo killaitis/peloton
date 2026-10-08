@@ -3,19 +3,17 @@ package peloton
 import peloton.config.Config
 import peloton.config.Config.*
 
-import org.testcontainers.containers.CassandraContainer
+import org.testcontainers.cassandra.CassandraContainer
 import org.testcontainers.utility.DockerImageName
 
 object CassandraSpec:
 
-  private lazy val container = {
-    val container = new CassandraContainer(DockerImageName.parse("cassandra").withTag("4"))
-    
-    container.start()
-    container
-  }
+  lazy val testContainerConfig: Config = configFor("4.1")
+  lazy val currentTestContainerConfig: Config = configFor("5.0")
 
-  lazy val testContainerConfig: Config =
+  private def configFor(version: String): Config = {
+    val container = new CassandraContainer(DockerImageName.parse("cassandra").withTag(version))
+    container.start()
     val contactPoint = container.getContactPoint()
     val datacenter = container.getLocalDatacenter()
     val dbUsername = container.getUsername()
@@ -42,3 +40,6 @@ object CassandraSpec:
         )
       )
     )
+  }
+
+end CassandraSpec

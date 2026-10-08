@@ -243,9 +243,9 @@ lazy val `integration-tests` = (project in file("integration-tests"))
       "org.typelevel" %% "cats-effect-testing-scalatest"  % Versions.CatsEffectTesting  % Test,
       "ch.qos.logback" % "logback-classic"                % Versions.Logback            % Test,
       "org.testcontainers" % "testcontainers"             % Versions.TestContainers     % Test,
-      "org.testcontainers" % "postgresql"                 % Versions.TestContainers     % Test,
-      "org.testcontainers" % "mysql"                      % Versions.TestContainers     % Test,
-      "org.testcontainers" % "cassandra"                  % Versions.TestContainers     % Test
+      "org.testcontainers" % "testcontainers-postgresql"  % Versions.TestContainers     % Test,
+      "org.testcontainers" % "testcontainers-mysql"       % Versions.TestContainers     % Test,
+      "org.testcontainers" % "testcontainers-cassandra"   % Versions.TestContainers     % Test
     )
   )
 

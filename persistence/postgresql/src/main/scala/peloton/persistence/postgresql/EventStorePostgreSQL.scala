@@ -94,21 +94,27 @@ private [postgresql] class EventStorePostgreSQL(using xa: Transactor[IO]) extend
     """.update.run.transact(xa).void
 
   override def purge(persistenceId: PersistenceId, snapshotsToKeep: Int): IO[Unit] = 
-    sql"""
-      delete from peloton.event_store 
-      where 
-            persistence_id = ${persistenceId.toString()} 
-        and sequence_id < ( select min(sequence_id) 
-                            from 
-                              ( select sequence_id 
-                                from peloton.event_store 
-                                where 
-                                      persistence_id = ${persistenceId.toString()} 
-                                  and is_snapshot 
-                                order by sequence_id desc
-                                limit ${snapshotsToKeep}
-                              ) as A
-                          )
-    """.update.run.transact(xa).void
+    if snapshotsToKeep < 0 then
+      IO.raiseError(IllegalArgumentException("snapshotsToKeep must not be negative"))
+    else if snapshotsToKeep == 0 then
+      sql"delete from peloton.event_store where persistence_id = ${persistenceId.toString()} and is_snapshot"
+        .update.run.transact(xa).void
+    else
+      sql"""
+        delete from peloton.event_store
+        where
+              persistence_id = ${persistenceId.toString()}
+          and sequence_id < ( select min(sequence_id)
+                              from
+                                ( select sequence_id
+                                  from peloton.event_store
+                                  where
+                                        persistence_id = ${persistenceId.toString()}
+                                    and is_snapshot
+                                  order by sequence_id desc
+                                  limit ${snapshotsToKeep}
+                                ) as A
+                            )
+      """.update.run.transact(xa).void
 
 end EventStorePostgreSQL

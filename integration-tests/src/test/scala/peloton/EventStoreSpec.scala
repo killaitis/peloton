@@ -1,6 +1,7 @@
 package peloton
 
 import peloton.persistence.EventStore
+import peloton.persistence.EncodedEvent
 import peloton.persistence.Event
 import peloton.persistence.Snapshot
 import peloton.persistence.PersistenceId
@@ -36,10 +37,15 @@ abstract class EventStoreSpec
                     }
         event   = Event(payload   = MyEvent(i = 33, s = "Scala"), timestamp = 12345L)
         _      <- store.writeEvent(persistenceId, event)
+        _      <- store.writeSnapshot(persistenceId, snap1, noPurging)
         _      <- store.clear()
         _      <- store.readEvents[MyState, MyEvent](persistenceId, false)
                     .compile.toList.asserting { 
                       _ shouldBe List.empty 
+                    }
+        _      <- store.readEvents[MyState, MyEvent](persistenceId, true)
+                    .compile.toList.asserting {
+                      _ shouldBe List.empty
                     }
       yield ()
 
@@ -58,6 +64,19 @@ abstract class EventStoreSpec
                     .compile.toList.asserting { 
                       _ shouldBe List(event1, event2, event3) 
                     }
+      yield ()
+
+  it should "persist event payloads larger than 64 KiB" in:
+    EventStore.use(config): store ?=>
+      val payload = Array.fill[Byte](70 * 1024)(42)
+      val event = EncodedEvent(payload = payload, timestamp = 1L, isSnapshot = false)
+
+      for
+        _       <- store.drop()
+        _       <- store.create()
+        _       <- store.writeEncodedEvent(persistenceId, event)
+        stored  <- store.readEncodedEvents(persistenceId, startFromLatestSnapshot = false).compile.last
+        _        = stored.map(_.payload.toList) shouldBe Some(payload.toList)
       yield ()
 
   it should "handle the order of events with the same timestamp correctly" in:
@@ -166,6 +185,23 @@ abstract class EventStoreSpec
                     .compile.toList.asserting { 
                       _ shouldBe List(snap2, event4, event5)
                     }
+      yield ()
+
+  it should "remove all snapshots but retain events when purging with zero snapshots to keep" in:
+    EventStore.use(config): store ?=>
+      for
+        _      <- store.drop()
+        _      <- store.create()
+        _      <- store.writeEvent(persistenceId, event1)
+        _      <- store.writeSnapshot(persistenceId, snap1, noPurging)
+        _      <- store.writeEvent(persistenceId, event2)
+        _      <- store.writeSnapshot(persistenceId, snap2, noPurging)
+        _      <- store.writeEvent(persistenceId, event3)
+        _      <- store.purge(persistenceId, snapshotsToKeep = 0)
+        _      <- store.readEvents[MyState, MyEvent](persistenceId, startFromLatestSnapshot = false)
+                    .compile.toList.asserting { _ shouldBe List(event1, event2, event3) }
+        _      <- store.readEvents[MyState, MyEvent](persistenceId, startFromLatestSnapshot = true)
+                    .compile.toList.asserting { _ shouldBe List(event1, event2, event3) }
       yield ()
 
 end EventStoreSpec

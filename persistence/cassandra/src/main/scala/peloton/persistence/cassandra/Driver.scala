@@ -22,7 +22,10 @@ class Driver extends peloton.persistence.Driver:
   override def createDurableStateStore(config: Config.DurableStateStore): IO[Resource[IO, DurableStateStore]] =
     for
       cqlSession         <- createCqlSession(config.params)
-      durableStateStore   = cqlSession.map(DurableStateStoreCassandra(_))
+      replicationStrategy = getOptionalParameter(config.params, "replication-strategy", "SimpleStrategy")
+      replicationFactor   = getOptionalParameter(config.params, "replication-factor", "1").toIntOption.getOrElse(1)
+      durableStateStore   = cqlSession.map: session =>
+                              DurableStateStoreCassandra(session, replicationStrategy, replicationFactor)
     yield durableStateStore
 
   override def createEventStore(config: Config.EventStore): IO[Resource[IO, EventStore]] =
@@ -57,7 +60,7 @@ class Driver extends peloton.persistence.Driver:
                           .collect { case host :: port :: Nil => InetSocketAddress(host, port.toInt) }
                           .asJava
     yield 
-      Resource.fromAutoCloseable(IO(
+      Resource.fromAutoCloseable(IO.blocking(
         CqlSession
             .builder()
             .withLocalDatacenter(datacenter)
