@@ -23,7 +23,7 @@ jobs:
           java-version: 25
 
       - name: Set up SBT
-        uses: sbt/setup-sbt@v1.5.5
+        uses: sbt/setup-sbt@v1.5.11
 
       - name: Launch Scala Steward
         uses: scala-steward-org/scala-steward-action@v2.96.0
