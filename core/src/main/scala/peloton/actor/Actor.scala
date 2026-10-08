@@ -75,8 +75,8 @@ abstract class Actor[-M]:
   /**
     * Terminate the actor. 
     * 
-    * This function is synchronous and effectful. It is guaranteed that the actor is terminated 
-    * after evaluating the effect.
+    * Termination immediately stops accepting new messages, fails queued ASK requests, and cancels
+    * the currently running message handler. This function returns after the actor loop has stopped.
     *
     * @return 
     *   an effect that, on evaluation, will terminate the given actor and returns `Unit`
@@ -125,6 +125,9 @@ object Actor:
 
   val DefaultTimeout: FiniteDuration = 1.hour
 
+  final case class ActorTerminatedException()
+      extends IllegalStateException("actor is terminated")
+
   /**
     * This class is used to establish a connection between a message class and the related response class 
     * using the ASK pattern. [[Actor.ask]] requires a given instance of `CanAsk`. This ensures at *COMPILE TIME*
@@ -168,7 +171,7 @@ object Actor:
     * @param actor 
     *   The actor to terminate
     * @return 
-    *   an effect that, on evaluation, will terminate the given actor and evaluate to `Unit`
+    *   an effect that, on evaluation, will stop the given actor and evaluate to `Unit`
     */
   inline def terminate(actor: Actor[?]): IO[Unit] = actor.terminate
 

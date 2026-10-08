@@ -6,6 +6,8 @@ import peloton.scheduling.cron.CronScheduler.syntax.*
 import peloton.actors.CounterActor
 
 import cats.effect.IO
+import cats.effect.Deferred
+import cats.effect.Ref
 import cats.effect.testing.scalatest.AsyncIOSpec
 
 import org.scalatest.flatspec.AsyncFlatSpec
@@ -41,5 +43,40 @@ class CronSchedulerSpec
 
   it should "consider a given timezone" in:
     pending
+
+  it should "cancel a scheduled task and stop further executions" in:
+    CronScheduler.use: scheduler ?=>
+      for
+        count      <- Ref.of[IO, Int](0)
+        firstTick  <- Deferred[IO, Unit]
+        task       <- scheduler.scheduleTask(
+                        count.updateAndGet(_ + 1).flatMap:
+                          case 1 => firstTick.complete(()).void
+                          case _ => IO.unit,
+                        cron = "* * * ? * *"
+                      )
+        _          <- firstTick.get.timeout(3.seconds)
+        _          <- task.cancel
+        countAtCancel <- count.get
+        _          <- IO.sleep(1200.millis)
+        countAfter <- count.get
+        _           = countAfter shouldBe countAtCancel
+      yield ()
+
+  it should "route scheduled effect errors to onError" in:
+    CronScheduler.use: scheduler ?=>
+      val expectedError = IllegalStateException("scheduled effect failed")
+
+      for
+        observedError <- Deferred[IO, Throwable]
+        task          <- scheduler.scheduleTask(
+                           IO.raiseError[Unit](expectedError),
+                           cron = "* * * ? * *",
+                           onError = error => observedError.complete(error).void
+                         )
+        actualError   <- observedError.get.timeout(3.seconds)
+        _              = actualError shouldBe expectedError
+        _             <- task.cancel
+      yield ()
 
 end CronSchedulerSpec

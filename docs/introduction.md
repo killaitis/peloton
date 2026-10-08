@@ -83,9 +83,9 @@ ActorSystem.use: _ ?=>
   yield ()
 ```
 
-Actors, their message inboxes and their message handlers are bound to the scope of the actor system they are created in. Terminating 
-the actor system will also terminate all of its actor's message handlers, even when currently processing a message, so be careful when 
-to terminate the actor system.
+Actors, their message inboxes and their message handlers are bound to the scope of the actor system they are created in. Terminating
+an actor stops it from accepting messages, fails queued ASK requests, and cancels a currently running message handler. The same applies
+to all actors when the actor system is shut down; use ASK when the caller must know that a message finished before shutdown.
 
 ### The Ask Pattern
 
@@ -172,6 +172,11 @@ as parameters and returns an `IO[Behavior[S, M]]`, i.e., a (possibly) new behavi
 react on the current state and the message to change its behavior. 
 
 The actor context can be used to modify the current state of the actor using `Context.setState()`.
+It also provides `scheduleOnce()` for delayed self-messages; scheduled timers are canceled when their actor terminates.
+
+Spawn methods accept an optional `inboxCapacity`. When set, external TELL/ASK submissions backpressure while that many
+messages are waiting in the inbox. The currently processed message, self-messages, and stashed messages do not count
+toward this limit. The default is an unbounded inbox.
 
 To return the current behavior, the context provides the methods `Context.currentBehavior()` (non-effectful)
 and `Context.currentBehaviorM()` (wrapped in a pure effect). Most methods of `Context` already return the 

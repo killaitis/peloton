@@ -43,6 +43,9 @@ private [actor] object DurableStateActor:
     *   The initial behavior, i.e., the message handler function. The function takes the current state of the actor, 
     *   the input (message) and the actor's [[Context]] as parameters and returns a new [[Behavior]], depending on 
     *   the state and the message. The behavior is evaluated effectful.
+    * @param inboxCapacity
+    *   Optional maximum number of externally submitted messages waiting in the inbox. External sends backpressure
+    *   when full. The message being processed, self-messages, and stashed messages are not counted; `None` is unbounded.
     * @param codec 
     *   A given [[PayloadCodec]] to convert instances of the actor's durable state type `S` to a byte array and vice versa
     * @param store 
@@ -52,7 +55,8 @@ private [actor] object DurableStateActor:
     */
   def spawn[S, M](persistenceId: PersistenceId,
                   initialState: S,
-                  initialBehavior: Behavior[S, M]
+                  initialBehavior: Behavior[S, M],
+                  inboxCapacity: Option[Int]
                  )(using 
                   codec: PayloadCodec[S],
                   store: DurableStateStore
@@ -72,26 +76,35 @@ private [actor] object DurableStateActor:
       stateRef     <- Ref.of[IO, DurableState[S]](state)
 
       // Create the message queues for both the inbox and the stash. 
-      inbox        <- Queue.unbounded[IO, ActorMessage[M]]
+      (inbox, mailboxSlots) <- ActorMailbox.create[M](inboxCapacity)
       stashed      <- Queue.unbounded[IO, ActorMessage[M]]
 
       // Use a Mutex to guard all access to both inbox and stash, i.e., make access atomic. This is neccessary to ensure that 
       // messages are always enquened in orrect order while moving messages from stash to inbox or vice versa.
       queueMutex   <- Mutex[IO]
+      lifecycle    <- ActorLifecycle.create(queueMutex)
+      timerRegistry <- ActorTimerRegistry.create
       
       // Create the message processing loop and spawn it in the background (fiber)
       msgLoopFib   <- (for
-                        (message, responseChannel)    
-                                             <- inbox.take
+                        queuedMessage        <- inbox.take
+                        _                    <- queuedMessage.releaseMailboxSlot
+                        entry                 = queuedMessage.copy(releaseMailboxSlot = IO.unit)
+                        message               = entry.message
+                        responseChannel       = entry.responseChannel
                         state                <- stateRef.get
 
                         currentBehavior      <- behaviorRef.get
                         
                         context               = new ActorContext[S, M](currentBehavior = currentBehavior):
                                                   override def tellSelf(message: M) =
-                                                    queueMutex.lock.surround:
-                                                      inbox.offer((message, None)) >> 
+                                                    lifecycle.guard:
+                                                      inbox.offer(ActorMessage(message, None)) >>
                                                       currentBehaviorM
+
+                                                  override def scheduleOnce(delay: FiniteDuration, message: M) =
+                                                    lifecycle.guard:
+                                                      timerRegistry.scheduleOnce(delay, lifecycle.guard(inbox.offer(ActorMessage(message, None))))
 
                                                   override def reply[R](response: R) =
                                                     responseChannel.traverseVoid(_.complete(Right(response)).void) >>
@@ -109,12 +122,12 @@ private [actor] object DurableStateActor:
                                                     yield this.currentBehavior
 
                                                   override def stash() =
-                                                    queueMutex.lock.surround:
-                                                      stashed.offer((message, responseChannel)) >>
+                                                    lifecycle.guard:
+                                                      stashed.offer(entry) >>
                                                       currentBehaviorM
 
                                                   override def unstashAll() =
-                                                    queueMutex.lock.surround:
+                                                    lifecycle.guard:
                                                       for
                                                         // Take all messages from stash and inbox ...
                                                         stashedMessages  <- stashed.tryTakeN(None)
@@ -131,6 +144,7 @@ private [actor] object DurableStateActor:
                                                   .recoverWith: error => 
                                                     responseChannel.traverseVoid(_.complete(Left(error)).void) >>
                                                     IO.pure(currentBehavior)
+                                                  .onCancel(responseChannel.traverseVoid(_.complete(Left(Actor.ActorTerminatedException())).void))
                                                   
                         _                    <- behaviorRef.set(newBehavior)                    
                       yield ()).foreverM.void.start
@@ -138,20 +152,20 @@ private [actor] object DurableStateActor:
       // Compose the actor
       actor         = new Actor[M]:
                         override def tell(message: M) = 
-                          queueMutex.lock.surround:
-                            inbox.offer((message, None))
+                          ActorMailbox.enqueue(lifecycle, inbox, mailboxSlots, message, None)
 
                         override def ask[M2 <: M, R](message: M2, timeout: FiniteDuration)(using Actor.CanAsk[M2, R]) =
                           for
                             responseChannel  <- Deferred[IO, Either[Throwable, Any]]
-                            _                <- queueMutex.lock.surround:
-                                                  inbox.offer((message, Some(responseChannel)))
+                            _                <- ActorMailbox.enqueue(lifecycle, inbox, mailboxSlots, message, Some(responseChannel))
                             output           <- responseChannel.get.timeout(timeout)
                             response         <- IO.fromEither(output)
                             narrowedResponse <- IO(response.asInstanceOf[R])
                           yield narrowedResponse
 
-                        override def terminate = msgLoopFib.cancel
+                        override def terminate = lifecycle.terminate(
+                          ActorLifecycle.failPending(inbox, stashed) >> timerRegistry.cancelAll >> msgLoopFib.cancel
+                        )
       
     yield actor
   end spawn
