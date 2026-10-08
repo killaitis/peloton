@@ -6,7 +6,7 @@ lazy val Benchmark =
 lazy val commonPublishSettings = Seq(
   organization         := "de.killaitis",
   organizationName     := "Andreas Killaitis",
-  organizationHomepage := Some(url("https://www.github.com/killaitis")),
+  organizationHomepage := Some(uri("https://www.github.com/killaitis")),
   
   useGpg := false,
   pgpPassphrase := Some(Array.empty[Char]),
@@ -19,8 +19,8 @@ lazy val commonPublishSettings = Seq(
       localStaging.value
   },
 
-  licenses := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php")),
-  homepage := Some(url("https://github.com/killaitis/peloton")),
+  licenses := Seq("MIT License" -> uri("http://www.opensource.org/licenses/mit-license.php")),
+  homepage := Some(uri("https://github.com/killaitis/peloton")),
   scmInfo := Some(
     ScmInfo(
       url("https://github.com/killaitis/peloton"),
@@ -32,7 +32,7 @@ lazy val commonPublishSettings = Seq(
       id    = "killaitis",
       name  = "Andreas Killaitis",
       email = "andreas@killaitis.de",
-      url   = url("http://www.github.com/killaitis/")
+      url   = uri("http://www.github.com/killaitis/")
     )
   )
 )
@@ -53,9 +53,9 @@ version := {
 
 versionScheme := Some("semver-spec")
 
-scalaVersion := "3.3.8"
+scalaVersion := "3.9.0"
 
-javacOptions ++= Seq("--release", "11")
+javacOptions ++= Seq("--release", "17")
 
 scalacOptions := Seq(
   "-source:future",
@@ -64,7 +64,7 @@ scalacOptions := Seq(
   "-Wunused:all",
   "-Wnonunit-statement",
   "-Wvalue-discard",
-  "-release", "11"
+  "-release", "17"
 )
 
 lazy val root = (project in file("."))

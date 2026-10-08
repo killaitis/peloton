@@ -182,9 +182,9 @@ object EventSourcedExample extends IOApp.Simple:
                     // Spawn the tracker actor and send some messages
           actor  <- EnergyTrackerActor.spawn()
 
-          pizza  <- actor ? EnergyTrackerActor.Message.EatPizza(1)
-          juice  <- actor ? EnergyTrackerActor.Message.DrinkJuice(2)
-          juice  <- actor ? EnergyTrackerActor.Message.DoWorkout(0.5)
+          _      <- actor ? EnergyTrackerActor.Message.EatPizza(1)
+          _      <- actor ? EnergyTrackerActor.Message.DrinkJuice(2)
+          _      <- actor ? EnergyTrackerActor.Message.DoWorkout(0.5)
           energy <- actor ? EnergyTrackerActor.Message.GetEnergy
           _      <- IO.println(s"The tracker initially reports $energy energy.")
 

@@ -68,7 +68,7 @@ class DurableStateActorBenchmark
                       _          <- info"Sending messages ..."
                       t1         <- clock.realTimeInstant
                       _          <- (0 until numActors)
-                                      .parTraverse_ { i =>
+                                      .parTraverseVoid { i =>
                                         val fooActor = fooActors(i)
                                         val barActor = barActors(i)
                                         
@@ -87,7 +87,7 @@ class DurableStateActorBenchmark
                       _          <- info"Waiting for completion ..."
                       _          <- warn"${GREEN}*** THIS MIGHT TAKE A COUPLE OF MINUTES TO COMPLETE. PICK A CUP OF TEA AND BE PATIENT! ***${RESET}"
                       _          <- (0 until numActors)
-                                      .parTraverse_(i => 
+                                      .parTraverseVoid(i => 
                                         for 
                                           _  <- fooActors(i) ? FooActor.Message.Get() asserting {
                                                   _ shouldBe FooActor.Response.GetResponse(x = numMessages - 1, y = 2*(numMessages - 1))
@@ -103,7 +103,7 @@ class DurableStateActorBenchmark
                       // Shut down the actors
                       _          <- info"Shutting down ..."
                       _          <- (0 until numActors)
-                                      .parTraverse_(i => 
+                                      .parTraverseVoid(i => 
                                         fooActors(i).terminate >> 
                                         barActors(i).terminate
                                       )

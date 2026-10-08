@@ -16,7 +16,7 @@ object Codecs:
       .catchNonFatal(Duration.fromNanos(dur))
       .leftMap(_ => "Decoder[FiniteDuration]")
 
-  given Encoder[FiniteDuration] with
+  given Encoder[FiniteDuration]:
     final def apply(dur: FiniteDuration): Json = Json.fromLong(dur.toNanos)
 
 end Codecs
