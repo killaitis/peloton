@@ -12,7 +12,7 @@ object Versions:
   
   val Fs2                      = "3.14.0"
   val Doobie                   = "1.0.0-RC13"
-  val PureConfig               = "0.17.10"
+  val PureConfig               = "0.17.11"
   val KryoSerialization        = "1.5.3"
   val QuartzScheduler          = "2.5.2"
   val RSFlowAdapters           = "1.0.2"
