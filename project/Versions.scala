@@ -11,7 +11,7 @@ object Versions:
   val Circe                    = "0.14.17"
   
   val Fs2                      = "3.15.0"
-  val Doobie                   = "1.0.0-RC13"
+  val Doobie                   = "1.0.0-RC14"
   val PureConfig               = "0.17.11"
   val KryoSerialization        = "1.5.3"
   val QuartzScheduler          = "2.5.2"
