@@ -8,7 +8,6 @@ lazy val commonPublishSettings = Seq(
   organizationName     := "Andreas Killaitis",
   organizationHomepage := Some(uri("https://www.github.com/killaitis")),
   
-  useGpg := false,
   pgpPassphrase := Some(Array.empty[Char]),
 
   publishTo := {

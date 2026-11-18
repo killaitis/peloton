@@ -28,6 +28,8 @@ jobs:
         run: |
           mkdir -p ~/.sbt/gpg
           echo "$PGP_PRIVATE_KEY" > ~/.sbt/gpg/secring.asc
+          chmod 600 ~/.sbt/gpg/secring.asc
+          gpg --batch --import ~/.sbt/gpg/secring.asc
 
       - name: Publish
         env:
