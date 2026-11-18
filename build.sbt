@@ -23,7 +23,7 @@ lazy val commonPublishSettings = Seq(
   homepage := Some(uri("https://github.com/killaitis/peloton")),
   scmInfo := Some(
     ScmInfo(
-      url("https://github.com/killaitis/peloton"),
+      uri("https://github.com/killaitis/peloton"),
       "https://github.com/killaitis/peloton.git"
     )
   ),
@@ -198,10 +198,7 @@ lazy val `scheduling-cron` = (project in file("scheduling/cron"))
     libraryDependencies ++= Seq(
       // Quartz Scheduler
       ("org.quartz-scheduler" % "quartz"                   % Versions.QuartzScheduler)
-        .exclude(
-          "com.zaxxer", 
-          "HikariCP-java7"
-        ),
+        .exclude("com.zaxxer" % "HikariCP-java7"),
 
       // Testing
       "org.scalatest" %% "scalatest"                      % Versions.ScalaTest          % Test,
