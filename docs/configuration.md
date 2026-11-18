@@ -1,47 +1,49 @@
 # Peloton Configuration
 
-Peloton uses the [Typesafe Config](https://github.com/lightbend/config) with HOCON configuration 
-files to configure your application. Usually, you'd create your own configuration file 
-(`./src/main/resources/application.conf`), but of cause you can use different ways the Typesafe 
-Config provides to configure your system.
+Peloton uses [Typesafe Config](https://github.com/lightbend/config) and HOCON. The usual place for application settings
+is `src/main/resources/application.conf`. Peloton loads the default Typesafe Config sources; Java system properties can
+override values from the configuration file.
 
-By default, all Peloton features that require special configuration parameters are optional and 
-disabled by default in the default configuration. 
+Features that require configuration are optional and disabled when their configuration is absent. See the
+[reference configuration](../core/src/main/resources/reference.conf) for the available top-level settings.
 
-Refer to the [reference configuration](/core/src/main/resources/reference.conf) for an overview.
+You can also load a `Config` explicitly with `Config.file[IO](path)` or `Config.string[IO](hocon)`, then pass it to
+`ActorSystem.use(config)`, `DurableStateStore.use(config)`, or `EventStore.use(config)`.
 
 ## Persistence configuration
 
-To use persistent actors in your actor system, you have to specify a Peloton driver and a database 
-connection, including database-specific connection or pooling parameters. 
+To use persistent actors, configure a persistence driver and its database connection, including any driver-specific
+connection or pooling parameters. Add the corresponding `peloton-persistence-*` module to your application's runtime
+dependencies; the driver class is loaded by name and is not included in `peloton-core`.
 
-The Peloton driver connects the generic Peloton persistence interface to a database-specific 
-persistence implementation, e.g., PostgreSQL.
+The driver connects Peloton's persistence interfaces to a database-specific implementation.
 
-Both the durable state store and the event store have independent configuration sections. 
-This allows you to use different database backends for both types of persistence.
+Durable state and event storage have independent configuration sections. They can use separate database connections or
+different drivers.
 
-### Supported database versions
+### Integration-test database versions
 
-The persistence adapters require these minimum server versions:
+The integration-test suite currently exercises these versions:
 
-| Database | Minimum supported version | Integration-test versions |
-| -------- | ------------------------- | ------------------------- |
-| MySQL    | 8.4 LTS                   | 8.4 and 9.7               |
-| PostgreSQL | 15                      | 15 and 18                 |
-| Cassandra | 4.1                      | 4.1 and 5.0               |
+| Database   | Older tested version | Newer tested version |
+| ---------- | -------------------- | -------------------- |
+| MySQL      | 8.4                  | 9.7                  |
+| PostgreSQL | 15                   | 18                   |
+| Cassandra  | 4.1                  | 5.0                  |
 
-A typical persistence configuration looks like this:
+These are the versions exercised by the tests, not a guarantee about every version in between.
 
-```
+A typical PostgreSQL configuration looks like this:
+
+```hocon
 peloton {
   persistence {
     durable-state-store {
       driver = peloton.persistence.postgresql.Driver
       params {
         url      = "jdbc:postgresql://db.mycompany.com:5432/peloton-durable-state"
-        user     = "peloton-dss"
-        password = "SuperSecret1"
+        user     = "replace-with-database-user"
+        password = "replace-with-database-password"
       }
     }
 
@@ -49,21 +51,19 @@ peloton {
       driver = peloton.persistence.postgresql.Driver
       params {
         url      = "jdbc:postgresql://db.mycompany.com:5432/peloton-journal"
-        user     = "peloton-es"
-        password = "EvenMoreSecret"
+        user     = "replace-with-database-user"
+        password = "replace-with-database-password"
       }
     }
   }
 }
 ```
 
-Here, different database connections are configured for the durable state store
-and the event store. 
+This example uses separate database connections for durable state and event storage.
 
-If you're just using a single database for both persistence types, you can use 
-HOCON's reference features to define it once and reference it twice:
+To use one database configuration for both stores, define it once and reference it from both sections:
 
-```
+```hocon
 peloton {
   persistence {
     durable-state-store = ${my-postgresql-config}
@@ -75,18 +75,16 @@ my-postgresql-config {
   driver = peloton.persistence.postgresql.Driver
   params {
     url               = "jdbc:postgresql://mydb.com:5432/peloton"
-    user              = "alvin"
-    password          = "stardust"
+    user              = "replace-with-database-user"
+    password          = "replace-with-database-password"
   }
 }
 ```
 
-Storing sensitive database credentials in a configuration file is usually a bad idea 
-(especially if the configuration file is also stored in a git repository), so you 
-might consider leaving them out in the configuration file and passing them via 
-Java system properties:
+Do not commit real credentials to a repository. You can leave the connection values out of the file and pass them as
+Java system properties instead:
 
-```
+```hocon
 peloton {
   persistence {
     event-store {
@@ -98,18 +96,20 @@ peloton {
 
 ```bash
 java \
-    "-Dpeloton.persistence.event-store.params.url=${DB_URL}" \
-    "-Dpeloton.persistence.event-store.params.user=${DB_USER}" \
-    "-Dpeloton.persistence.event-store.params.password=${DB_PASSWD}" \
+    "-Dpeloton.persistence.event-store.params.url=$DB_URL" \
+    "-Dpeloton.persistence.event-store.params.user=$DB_USER" \
+    "-Dpeloton.persistence.event-store.params.password=$DB_PASSWORD" \
     ...
 ```
+
+The Java system properties override the corresponding values in `application.conf`. Use your deployment platform's
+secret manager to provide credentials rather than storing them in source control.
 
 ### Driver-specific configuration
 
 #### PostgreSQL
 
-Peleton uses the PostgreSQL JDBC driver in conjunction with a [Hikari](https://github.com/brettwooldridge/HikariCP) 
-connection pool.
+Peloton uses the PostgreSQL JDBC driver with a [Hikari](https://github.com/brettwooldridge/HikariCP) connection pool.
 
 *Driver name*:
 `peloton.persistence.postgresql.Driver`
@@ -117,10 +117,10 @@ connection pool.
 *Parameters*:
 | Name                | Required?          | Description |
 | ------------------- | ------------------ | ----------- |
-| `url`               | :white_check_mark: | The JDBC URL for the PostgreSQL database. Example: `jdbc:postgresql://mydb.com:5432/peloton` |
+| `url`               | :white_check_mark: | The JDBC URL for the PostgreSQL database, e.g. `jdbc:postgresql://mydb.com:5432/peloton`. |
 | `user`              | :white_check_mark: | The name of the database user account |
-| `password`          | :white_check_mark: | The password of the database user account|
-| `maximum-pool-size` |                    | The maximum size of the Hikari connection pool. Default: `10` |
+| `password`          | :white_check_mark: | The password of the database user account |
+| `maximum-pool-size` |                    | The maximum Hikari connection-pool size. Default: `10` |
 
 
 #### MySQL
@@ -134,10 +134,10 @@ connection pool.
 *Parameters*:
 | Name                | Required?          | Description |
 | ------------------- | ------------------ | ----------- |
-| `url`               | :white_check_mark: | The JDBC URL for the MySQL database. Example: `jdbc:mysql://mydb.com:3306/peloton` |
+| `url`               | :white_check_mark: | The JDBC URL for the MySQL database, e.g. `jdbc:mysql://mydb.com:3306/peloton`. |
 | `user`              | :white_check_mark: | The name of the database user account |
 | `password`          | :white_check_mark: | The password of the database user account |
-| `maximum-pool-size` |                    | The maximum size of the Hikari connection pool. Default: `10` |
+| `maximum-pool-size` |                    | The maximum Hikari connection-pool size. Default: `10` |
 
 
 #### Cassandra (experimental)
@@ -151,36 +151,37 @@ validated in production. Treat it as experimental for production deployments.
 *Parameters*:
 | Name                   | Required?          | Description |
 | ---------------------- | ------------------ | ----------- |
-| `contact-points`       | :white_check_mark: | a comma-separated list of contact point addresses (format: "host:port") |
-| `datacenter`           | :white_check_mark: | the name of the datacenter to connect to |
+| `contact-points`       | :white_check_mark: | Comma-separated contact points in `host:port` format |
+| `datacenter`           | :white_check_mark: | The local datacenter to connect to |
 | `user`                 | :white_check_mark: | The name of the database user account |
-| `password`             | :white_check_mark: | The password of the database user account|
-| `replication-strategy` |                    | The keyspace replication strategy. Default: `SimpleStrategy` |
-| `replication-factor`   |                    | The keyspace replication factor. Default: 1 |
+| `password`             | :white_check_mark: | The password of the database user account |
+| `replication-strategy` |                    | Replication class used when creating the keyspace. Default: `SimpleStrategy`. |
+| `replication-factor`   |                    | Replication factor passed to Cassandra. Default: `1`. |
 
-Both Cassandra stores use the same `peloton` keyspace. If both are enabled, configure the same
-replication strategy and factor for the durable-state store and event store; the settings used when
-the keyspace is first created take effect.
+Both Cassandra stores use the same `peloton` keyspace. The keyspace is created with `IF NOT EXISTS`, so its replication
+settings are applied only when it is first created. If both stores are enabled, configure matching settings for each.
+The adapter passes a single replication factor to Cassandra. The default `SimpleStrategy` with a factor of `1` is
+intended for simple or development setups; verify that the configured strategy and factor are appropriate for your
+cluster before creating the keyspace.
 
 
 ## Peloton remote actor configuration
 
-By default, Peloton actor systems are local-only and do not provide access to their actors via HTTP. 
-To enable access to the actors of a local actor system, you have to specify a host name and a port 
-in the configuration:
+By default, actor systems are local-only and do not expose actors over HTTP. To enable the HTTP endpoint, configure a
+hostname and port:
 
-```
+```hocon
 peloton {
   http {
-    hostname = pelo1.intra.foo.net
+    hostname = "localhost"
     port     = 5000
   }
 }
 ```
 
-This will start an HTTP server on the local machine. Actors from other machines/processes can then use 
-a remote actor reference to send messages to actors belonging to the actor system on this machine.
+When the actor system starts, it binds an HTTP server to the configured hostname and port. For clients on other
+machines, use a hostname or address they can reach and allow the connection through your network configuration.
 
-The remote actor endpoint currently has no authentication or TLS and deserializes message payloads with
-Kryo. Bind it only to loopback or a trusted network; use a TLS/authenticating proxy before exposing it
-to untrusted clients.
+The endpoint has no built-in authentication or TLS and deserializes message payloads with Kryo. Do not expose it to
+untrusted networks; bind it to loopback or a trusted interface, or place it behind a TLS/authenticating proxy. See
+[Remote Actors](./introduction.md#remote-actors) for usage details.

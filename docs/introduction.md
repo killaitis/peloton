@@ -1,24 +1,23 @@
 # Introduction to Peloton
 
-This document will introduce you to the core concepts used by the Peloton library.
+This guide introduces the core concepts and actor types provided by Peloton.
 
 
 ## The Actor System
 
-An actor system is the central hub for actors. It is used to create new actors, manage their lifetime and possibly transport 
-messages to other actor systems on remote machines.
+An actor system is the central hub for its actors. It creates and manages actors and can expose them to other actor systems
+over HTTP when remote access is configured.
 
-You create a new actor system with default settings:
+`ActorSystem.use` creates an actor system with the default configuration and releases it when the supplied effect completes:
 
 ```scala
 ActorSystem.use: actorSystem ?=> 
-  // use the actor system
-  IO.never // use it forever
+  // Keep the application running until it is canceled.
+  IO.never
 ```
 
-Usually, to create an actor you would pass the actor system as a given instance to the factory method of the actor class. 
-The provided actor system is already a `given` instance, so if you do not need direct access to the actor system, but only 
-a given instance, you can simply write (`use { _ ?=> ... }`). 
+The actor system is available as a contextual (`given`) value inside the block. You can use it directly or pass it to an
+actor factory:
 
 ```scala
 ActorSystem.use: _ ?=> 
@@ -29,90 +28,59 @@ ActorSystem.use: _ ?=>
   yield ()
 ```
 
-The lifetime of the provided actor system is scoped to the `use {}` block. All actors that are still running at the end of the block 
-will be automatically terminated before the actor system is shut down, so manually terminating an actor is optional, unless your 
-actor logic requires it to be terminated.
+The actor system's lifetime is scoped to the `use` block. On release, it terminates all registered actors. Termination stops
+new messages, fails queued ASK requests, and cancels any message handler that is currently running. If a caller must wait for
+work to finish, the handler must send its ASK reply only after that work is complete; see [The Ask Pattern](#the-ask-pattern).
 
 ## Actors and Interaction Patterns
 
-Actors are fenced objects that can only be interacted with by sending them messages. Messages sent to an actor are enqueued in the actor's 
-message queue and the actor will process these messages one by one, guaranteeing the actor's message handler a concurrency-free access 
-to the internal state of the actor when processing the messages (though you can concurrently send messages to the actor). 
+Actors encapsulate their state and can be interacted with only by sending messages. Messages are placed in an actor's inbox
+and processed sequentially, so a handler does not run concurrently with another handler for the same actor. Different callers
+can send messages concurrently.
 
-You never get direct access to the data structures that back an actor. Instead, on creation, the actor system will return a data structure
-called `ActorRef[M]`, where `M` is the type of messages this actor will support to receive to ensure type safety. An `ActorRef` is like 
-a kind of pointer to the real actor and provides an interface to communicate with it. This is to hide the many possibilities how an actor 
-might actually be implemented, or even where it is located (remote actors can be even on a totally different machine).
+When an actor is created, the actor system returns an `ActorRef[M]`, where `M` is the actor's message type. The reference
+provides a typed interface without exposing the actor's implementation or state. An actor can be local or, when configured,
+remote.
 
-Actors provide two different interaction patterns to the client: the TELL and the ASK pattern.
+Spawn methods optionally accept `inboxCapacity`. When the bounded inbox is full, external sends wait until space is available.
+The default inbox is unbounded.
 
-*Note:* The code examples below are taken from the examples provided in this repository at the [examples](./examples/) folder.
+*Note:* Examples are available in the repository's [examples directory](../examples/).
+
+Actors provide two interaction patterns: TELL and ASK.
 
 ### The Tell Pattern
 
-Using the TELL pattern means that the message is just sent to the actor's message inbox and no response is expected. The control flow 
-is yielded back to the client immediately after the message is put into the actor's message inbox. At this time, the actor has probably 
-not yet processed the message as the message processing is performed asynchronously, so a certain actor state can not be assumed. 
-On the other hand, it is guaranteed that the order of the messages in the actor's message inbox strictly follows the order of calls 
-in the client code (if done synchronously).
+With TELL, the caller sends a message without requesting a response. When the `tell` effect completes, the message has been
+accepted into the inbox; this does not mean that the actor has processed it. Sequential sends from one caller are processed
+in inbox order.
 
-In Peloton, to use the TELL pattern you call the `tell()` method of a given actor reference. You can also use the operator `!` instead, 
-which is just an alias for `tell()`. 
+Use `tell()` or its `!` alias:
 
 ```scala
 ActorSystem.use: _ ?=> 
   for
-    // Create a new actor. This will return an ActorRef[Message], which means that this actor 
-    // will only support messages of type Message.
-    helloActor <- HelloActor.spawn() 
+    helloActor <- HelloActor.spawn()
 
-    // Send messages with tell() method
     _          <- helloActor.tell(HelloActor.Message.Hello("World"))
     _          <- helloActor.tell(HelloActor.Message.Hello("Darkness"))
-
-    _          <- helloActor.tell("Hello") // This will NOT compile!
-    _          <- helloActor.tell(42)      // This will NOT compile!
-
-    // Send messages with the ! alias
     _          <- helloActor ! HelloActor.Message.Hello("Kitty")
 
-    // At this time, the messages are guaranteed to have arrived in the actor message inbox, 
-    // but they are probably not processed yet. They may have, but there is no guarantee.
-
-    // ...
   yield ()
 ```
 
-Actors, their message inboxes and their message handlers are bound to the scope of the actor system they are created in. Terminating
-an actor stops it from accepting messages, fails queued ASK requests, and cancels a currently running message handler. The same applies
-to all actors when the actor system is shut down; use ASK when the caller must know that a message finished before shutdown.
+The message type on `ActorRef[M]` is checked at compile time. If an inbox is bounded and full, sending also applies backpressure.
+TELL does not report whether the actor's handler later succeeds.
 
 ### The Ask Pattern
 
-While in the TELL pattern sending messages is completely isolated from processing them, it's the opposite in the ASK pattern. To use 
-it, you call `ask()` on the actor reference, like you call `tell()` in the TELL pattern. The difference is that the call to `ask()`
+ASK sends a message and waits asynchronously for a response. The caller's `IO` remains pending; it does not block a thread.
+Each supported message/response pair must have a `CanAsk[M, R]` instance. This lets the compiler check the pair and infer
+the response type. The `?` operator is an alias for `ask()`.
 
-* is blocked until the message (and all other preceeding messages in the message inbox as well!) is fully 
-processed by the actor's message mandler
-* will return a value of a specific type, while `tell()` will just return `Unit`.
-
-Unlike the TELL pattern which every actor supports out of the box, the ASK pattern has to be explicitly made available by the actor 
-for a specific combination of message and response type. Thus, you cannot simply call `ask()` for any message type the actor supports.
-
-To enable a specific combination of message and response type to be ASK-able, there has to be a given instance of `CanAsk[M, R]`, 
-where `M` is the message type and `R` the response type. You can create such an instance by using the `Actor.canAsk` function.
-This gives a compile-time type safety for each call to `ask()`, as it is the Scala compiler that checks for the existence of a
-`CanAsk[M, R]` for the provided message type `M` and can then infer the expected response type `R`.
-
-*Note:* You can use the operator `?` as an alias for `ask()`.
-
-which is just an alias for `tell()`. 
-*Note:* This is in contrast to Akka Typed which uses a generic response type `R` for all responses but cannot differentiate between 
-combinations of subtypes of `M` and `R` which usually makes it necessary to apply pattern matching after each `ask()` in case the 
-response type is polymorphic.
-
-*Note:* The actor's message handler has to actively return a value of the response type as well. This will be covered later in the 
-sections about different actor types.
+The handler must explicitly reply by calling `context.reply(response)`. An ASK fails if the handler fails, and times out if
+no reply arrives before the timeout (one hour by default). A `CanAsk` instance declares a supported protocol pair; it cannot
+guarantee that every handler path actually sends a reply.
 
 ```scala
 object HelloActor:
@@ -125,7 +93,7 @@ object HelloActor:
   object Response:
     final case class HowAreYouResponse(msg: String)
 
-  // This wires a specific message type to a specific response type.
+  // Declare the message/response pair supported by ASK.
   given CanAsk[Message.HowAreYou.type, Response.HowAreYouResponse] = canAsk
 
 // ...
@@ -134,30 +102,22 @@ ActorSystem.use: _ ?=>
   for
     helloActor <- HelloActor.spawn() 
 
-    // ASK the actor. Due to the existence of a specific CanAsk for our message type 
-    // HelloActor.Message.HowAreYou, the compiler can infer the result type
-    // HelloActor.Response.HowAreYouResponse.
     response   <- helloActor.ask(HelloActor.Message.HowAreYou)
     _          <- IO.println(s"The Hello actor says: ${response.msg}")
 
-    // ASK with operator
     response2  <- helloActor ? HelloActor.Message.HowAreYou
-
-    // At this time, the message is guaranteed to be processed by the actor.
   yield ()
 ```
 
+The actor processes inbox messages sequentially, so earlier messages in the inbox are handled first. The ASK response is
+completed when `context.reply` is called, however, which may happen before the handler finishes. For example, an
+event-sourced handler can reply before its event is written. Place the reply after the work the caller needs to observe.
+
 ### Tell versus Ask
 
-The ASK pattern provides an easy way for a direct (pseudo-synchronous) communication with an actor. 
-But it comes with a price: the client code is logically blocking during the call to `ask()`. To avoid this,
-you can use a protocol that adds the caller's address (probably an `ActorRef[R]`) to the message, then TELL 
-the message to the actor and the actor can then TELL back the response to the client, making both actors 
-decoupled.
-
-*Note:* Be aware that providing ASKs to an actor's protocol always adds complexity to the actor as it has to create 
-and handle resources that it wouldn't need with TELL, making it basically slower. So, if there is no need to
-provide ASK in your actor protocol, don't add it!
+ASK is convenient when a caller needs a result. For a fully asynchronous protocol, include a reply-to `ActorRef[R]` in the
+message and have the receiving actor send a TELL response to it. This avoids keeping the caller's `IO` pending while the
+request is handled.
 
 ## Stateful Actors
 
@@ -165,22 +125,21 @@ Stateful actors maintain a mutable state of a specific type in memory. They are 
 method of the `ActorSystem`. The method takes an optional name (a random one is generated if omitted),
 the initial state and the initial behavior for the actor.
 
-The message handler of a stateful actor is of type `Behavior[S, M]`, where `S` is the type of the actor's state 
-and `M` is the type of the actor's messages. The type `Behavior[S, M]` is a single-method trait with an 
-abstract method called `receive()`, which provides the current state, the message and the current actor context 
-as parameters and returns an `IO[Behavior[S, M]]`, i.e., a (possibly) new behavior. This allows an actor to 
-react on the current state and the message to change its behavior. 
+The behavior of a stateful actor has type `Behavior[S, M]`, where `S` is the state type and `M` is the message type.
+Its `receive` method takes the current state, the message, and the `ActorContext[S, M]`, then returns an
+`IO[Behavior[S, M]]`. A handler can return the current behavior or a different one to change how the actor handles
+subsequent messages.
 
-The actor context can be used to modify the current state of the actor using `Context.setState()`.
-It also provides `scheduleOnce()` for delayed self-messages; scheduled timers are canceled when their actor terminates.
+Use `ActorContext.setState()` to replace the actor's state. The context also provides `scheduleOnce()` for delayed
+self-messages; outstanding timers are canceled when the actor terminates.
 
-Spawn methods accept an optional `inboxCapacity`. When set, external TELL/ASK submissions backpressure while that many
-messages are waiting in the inbox. The currently processed message, self-messages, and stashed messages do not count
-toward this limit. The default is an unbounded inbox.
+Spawn methods accept an optional `inboxCapacity`. When set, external TELL and ASK submissions apply backpressure while
+the inbox is full. The message currently being processed, self-messages, and stashed messages do not count toward the
+limit. The default is an unbounded inbox.
 
-To return the current behavior, the context provides the methods `Context.currentBehavior()` (non-effectful)
-and `Context.currentBehaviorM()` (wrapped in a pure effect). Most methods of `Context` already return the 
-current behavior, so this can often be omitted. 
+`ActorContext.currentBehavior` and `currentBehaviorM` provide the current behavior directly or wrapped in `IO`.
+Context operations such as `setState`, `reply`, and `stash` already return the current behavior, so an explicit return
+is often unnecessary.
 
 
 ```scala
@@ -195,18 +154,15 @@ object MyActor:
 
   private val behavior: Behavior[MyState, MyMessage] =
     (state, message, context) => message match
-      case SetInt(newI) => 
-        context.setState(state.copy(i = newI)) >> 
-        context.currentBehaviorM 
-        
-      case SetString(newS) => 
-        context.setState(state.copy(s = newS))  // setState automatically returns 
-                                                // the current behavior, so currentBehaviorM 
-                                                // can be omitted.
+      case SetInt(newI) =>
+        context.setState(state.copy(i = newI))
 
-  def spawn()(using actorSystem: ActorSystem) = 
+      case SetString(newS) =>
+        context.setState(state.copy(s = newS))
+
+  def spawn()(using actorSystem: ActorSystem) =
     actorSystem.spawnActor[MyState, MyMessage](
-      name            = Some("MyActor"), // An optional name for the actor
+      name            = Some("MyActor"),
       initialState    = MyState(i = 3, s = "x"),
       initialBehavior = behavior
     )
@@ -214,7 +170,7 @@ end MyActor
 
 ```
 
-Next, we'll define an actor that supports the ASK pattern:
+This example shows a stateful actor that supports the ASK pattern:
 
 ```scala
 object HelloActor:
@@ -233,85 +189,154 @@ object HelloActor:
   // This enables the ASK pattern for the given message and response types.
   given CanAsk[Message.HowAreYou.type, Response.HowAreYouResponse] = canAsk
 
-  private val behavior: Behavior[State, Message] = 
+  private val behavior: Behavior[State, Message] =
     (state, message, context) => message match
-      case Message.Hello(greeting) => // Hello is TELL-only => no response
-        context.setState(alreadyGreeted = true)
-        
-      case Message.HowAreYou => // HowAreYou is ASK-able => send response
-        if state.alreadyGreeted
-        then context.reply(Response.HowAreYouResponse("I'm fine!")) 
-        else context.reply(Response.HowAreYouResponse("Nobody likes me.")) 
+      case Message.Hello(_) =>
+        context.setState(State(alreadyGreeted = true))
 
-  def spawn()(using actorSystem: ActorSystem) = 
+      case Message.HowAreYou =>
+        if state.alreadyGreeted
+        then context.reply(Response.HowAreYouResponse("I'm fine!"))
+        else context.reply(Response.HowAreYouResponse("I'm not fine yet."))
+
+  def spawn()(using actorSystem: ActorSystem) =
     actorSystem.spawnActor[State, Message](
       name            = Some("HelloActor"),
       initialState    = State(alreadyGreeted = false),
       initialBehavior = behavior
     )
-    
+
 end HelloActor
 ```
 
-*Note:* be careful when activating ASK for an actor! Make sure that the behavior will *always* return 
-a valid value of the promised type. Otherwise the client will be stuck forever,
+*Note:* Every handler path for an ASK-enabled message must call `context.reply` with the declared response type.
+If it does not reply, the caller waits until the ASK timeout.
+
+### Stashing messages
+
+`context.stash()` moves the message currently being processed to the actor's stash. The actor can later call
+`context.unstashAll()` to move stashed messages back to the inbox. They are placed ahead of messages that were already
+waiting in the inbox, so they are processed first.
 
 ## Durable State Actors
 
-Unlike stateful actors which hold their current state in memory only, durable state actors use an 
-external storage system to make their state persistent. Durable state actors start with a given initial 
-state when they are created the first time, i.e., the actor has never before written its state, 
-and read the state from the external storage system on each consecutive start.
+Unlike stateful actors, which keep their state only in memory, durable state actors persist each state update to an
+external store. When an actor starts, it loads the latest state for its persistence ID. If no state exists yet, it
+uses the supplied initial state.
 
-Durable state actors are spawned using the method `spawnDurableStateActor()` of the `ActorSystem`, 
-which - like stateful actors - takes an initial state and an initial behavior as arguments, but 
-additionally takes a persistence ID argument. The persistence ID is the primary key that is used
-by the underlying storage system for this actor, so it has to be unique. There is no check for
-uniqueness, so be careful when assigning the persistence ID. 
+Create one with `ActorSystem.spawnDurableStateActor()`. In addition to the initial state and behavior, it requires a
+`PersistenceId`, which identifies the actor's record in the store. Peloton does not check that persistence IDs are
+unique, so the application must ensure that each actor instance uses the correct ID.
 
-To change the state of the durable state actor, the actor contect provides the `setState()` method - like the stateful actor. 
-So in usage of the state, durable state actors and stateful actors do not differ. The difference 
-bethween both is that, for the durable state actor, you have to provide given instances of 
+Use `ActorContext.setState()` to update a durable state actor. The update is written to the store before the in-memory
+state is advanced. A durable state actor requires given instances of:
 
-* `PayloadCodec[S]`: used to encode the current state of the actor (when updating its state 
-and thus writing it to the storage) and decode the previous state when respawning the actor. Notice that
-the payload codec is typed with the actor's state type.
-* `DurableStateStore`: used to read and write instances of the actor's state type. The payload is 
-stored in a binary representation, so it uses a given payload codec to encode and decode the payload.
+* `PayloadCodec[S]`, to encode and decode the actor's state.
+* `DurableStateStore`, which reads and writes the encoded state.
 
-Currently, Peloton supports two different payload codecs:
-* `JsonPayloadCodec`: uses Json format. Generates a larger, but human-readable binary representation. 
-Good for development or if performance is not the most important factor.
-* `KryoPayloadCodec`: Uses the much more compact Kryo format. Generates a much smaller binary 
-representation that is not human-readable. Typically used for high-volume production environments.
+Peloton provides two payload codecs:
 
-An instance of `DurableStateStore` can be created using `DurableStateStore.make()`. There are two 
-versions: one that takes an explicit storage configuration as a parameter and one without parameters. 
-The first one allows you to explicitly define your storage backend programmatically while the 
-latter will read the default configuration from the `application.conf` (or all other ways that 
-Pureconfig provides).
+* `JsonPayloadCodec` stores JSON-encoded bytes, which are easier to inspect.
+* `KryoPayloadCodec` stores compact binary data, which is not human-readable.
 
-Currently, Peloton comes with support for 
-* `postgresql`
-* `mysql` (experimental, needs more testing)
-* `cassandra` (experimental, needs more testing)
+Choose a codec based on your compatibility and operational needs; do not assume that serialized data remains compatible
+across arbitrary changes to your state types or codec.
 
-These drivers are not incuded in the core Peloton package. You have to add them to your dependencies. 
+`DurableStateStore.use()` provides a configured store for a resource scope. The configuration is read from the default
+Typesafe Config sources; see [Peloton Configuration](./configuration.md) for backend setup.
+
+Persistence drivers are separate modules and are not included in `peloton-core`:
 
 ```sbt
 libraryDependencies += "de.killaitis" %% "peloton-persistence-postgresql" % PelotonVersion
-libraryDependencies += "de.killaitis" %% "peloton-persistence-mysql" % PelotonVersion     // experimental
-libraryDependencies += "de.killaitis" %% "peloton-persistence-cassandra" % PelotonVersion // experimental
+libraryDependencies += "de.killaitis" %% "peloton-persistence-mysql" % PelotonVersion
+libraryDependencies += "de.killaitis" %% "peloton-persistence-cassandra" % PelotonVersion
 ```
 
-`DurableStateStore.make()` returns a `Resource` value. If you just want to use it as a given value,
-you can just use `DurableStateStore.use()`.
-
-You can find a simple example [here](../examples/src/main/scala/DurableStateExample.scala) 
+MySQL and Cassandra support is experimental. See the [durable state example](../examples/src/main/scala/DurableStateExample.scala).
 
 ## Event-Sourced Actors
 
+Event-sourced actors persist events rather than each new state. Their state is kept in memory while running and is rebuilt
+when the actor starts by loading the latest snapshot, if one exists, and replaying the events that follow it. The
+supplied initial state is used when there is no stored snapshot or event.
+
+Create one with `ActorSystem.spawnEventSourcedActor[S, M, E]`. It requires:
+
+* `PersistenceId`, a unique identifier for this actor's event stream.
+* `MessageHandler[S, M, E]`, which handles a message and returns `EventAction.Ignore` or `EventAction.Persist(event)`.
+  It may also reply to an ASK through the actor context.
+* `EventHandler[S, E]`, which applies an event to the current state and returns the new state.
+* An `EventStore`, a `PayloadCodec[E]` for events, and a `PayloadCodec[S]` for snapshots.
+
+When the message handler returns `Persist`, Peloton writes the event before applying it to the in-memory state. The event
+handler is also used to replay stored events at startup. Event-sourced actors keep a fixed behavior; their state changes
+through events rather than through `ActorContext.setState()`.
+
+Snapshots are optional and disabled by default. A `SnapshotPredicate` decides when to write one. `Retention` can purge
+events and older snapshots after a snapshot is written; configure it carefully because purged events are no longer
+available for replay. See the [event-sourced example](../examples/src/main/scala/EventSourcedExample.scala).
+
 ## Remote Actors
 
+To expose an actor system over HTTP, configure `peloton.http` with a hostname and port. The actor system starts the
+HTTP server when it is created:
+
+```hocon
+peloton {
+  http {
+    # Use an address reachable by clients; 127.0.0.1 is local to this machine.
+    hostname = "127.0.0.1"
+    port     = 5000
+  }
+}
+```
+
+Give remotely addressable actors an explicit name when spawning them. A client can then create a remote reference using
+a URI such as `peloton://127.0.0.1:5000/my-actor`. Remote references support TELL and ASK; terminating a remote actor
+through its reference is not supported.
+
+Remote messages and responses are serialized with Kryo and transported over HTTP. Both sides therefore need compatible
+message and response types. The `peloton://` URI scheme identifies a Peloton reference; the transport itself is plain
+HTTP.
+
+**Security:** The remote endpoint has no built-in authentication or TLS. It also deserializes payloads with Kryo. Do not
+expose it to untrusted networks; bind it to a trusted interface or protect it with a suitably configured network boundary
+and TLS/authenticating proxy. See [Peloton Configuration](./configuration.md) for the HTTP settings.
+
 ## Scheduled Effects
+
+The separate `peloton-scheduling-cron` module schedules Cats Effect `IO` values with Quartz-compatible CRON expressions.
+Add the module as a dependency:
+
+```sbt
+libraryDependencies += "de.killaitis" %% "peloton-scheduling-cron" % PelotonVersion
+```
+
+Create a `CronScheduler` resource with `CronScheduler.use`, then use the extensions from `CronScheduler.syntax`:
+
+```scala
+import cats.effect.IO
+import peloton.scheduling.cron.CronScheduler
+import peloton.scheduling.cron.CronScheduler.syntax.*
+import scala.concurrent.duration.*
+
+CronScheduler.use: _ ?=>
+  for
+    task <- IO.println("Scheduled task")
+              .scheduledTask(
+                cron = "*/5 * * ? * *",
+                onError = error => IO.println(s"Scheduled task failed: $error")
+              )
+    _    <- IO.sleep(30.seconds)
+    _    <- task.cancel
+  yield ()
+```
+
+`scheduledTask` returns a handle that can cancel the task or observe its consumer fiber with `join`. The convenience
+extension `scheduled` returns no handle. Releasing the scheduler cancels all tasks. By default, effect failures are
+ignored; provide `onError` to handle them. See the [scheduled effects example](../examples/src/main/scala/ScheduledEffects.scala).
+
+Actors can also schedule delayed self-messages with `ActorContext.scheduleOnce`; these timers are canceled when the actor
+terminates. This is separate from CRON scheduling.
 
