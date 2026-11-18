@@ -7,9 +7,8 @@ lazy val commonPublishSettings = Seq(
   organization         := "de.killaitis",
   organizationName     := "Andreas Killaitis",
   organizationHomepage := Some(uri("https://www.github.com/killaitis")),
-  pgpSigningKey        := Some("87CFA5B5A3715D2C"),
-  
-  pgpPassphrase := Some(Array.empty[Char]),
+  pgpSigningKey        := Some("AC41DFDCB71212A3"),
+  pgpPassphrase        := Some(Array.empty[Char]),
 
   publishTo := {
     val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
