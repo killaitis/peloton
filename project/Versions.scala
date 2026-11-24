@@ -17,7 +17,7 @@ object Versions:
   val QuartzScheduler          = "2.5.2"
   val RSFlowAdapters           = "1.0.2"
 
-  val Postgres                 = "42.7.14"
+  val Postgres                 = "42.7.15"
   val MySQL                    = "26.10.0"
   val CassandraJavaDriver      = "4.17.0"
 
